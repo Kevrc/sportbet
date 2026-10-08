@@ -1,0 +1,29 @@
+# Cada carpeta tiene un solo dueño.
+# Persona 1: @Kevrc · Persona 2: @Carlos2190 · Persona 4: @jeimytorresg
+# Persona 3: PENDIENTE de usuario; mientras tanto sus carpetas quedan a cargo de @Kevrc.
+# Archivos congelados y compartidos: requieren aprobación de todo el equipo.
+
+*                                   @Kevrc @Carlos2190 @jeimytorresg
+
+/backend/internal/auth/             @Kevrc
+/backend/internal/users/            @Kevrc
+/backend/internal/admin/            @Kevrc
+/frontend/src/app/features/auth/    @Kevrc
+/frontend/src/app/features/admin/   @Kevrc
+/docs/persona1-plataforma.md        @Kevrc
+
+/backend/internal/events/           @Carlos2190
+/backend/internal/markets/          @Carlos2190
+/backend/internal/providers/        @Carlos2190
+/backend/testdata/replay/           @Carlos2190
+/docs/persona2-datos.md             @Carlos2190
+
+/backend/internal/betting/          @Kevrc
+/backend/internal/wallet/           @Kevrc
+/backend/internal/settlement/       @Kevrc
+/docs/persona3-transaccional.md     @Kevrc
+
+/frontend/src/app/features/events/  @jeimytorresg
+/frontend/src/app/features/betting/ @jeimytorresg
+/frontend/src/app/features/wallet/  @jeimytorresg
+/docs/persona4-frontend.md          @jeimytorresg
