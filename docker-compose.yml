@@ -1,0 +1,32 @@
+# CONGELADO después del commit base.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sportbet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sportbet}
+      POSTGRES_DB: ${POSTGRES_DB:-sportbet}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sportbet}"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-sportbet}:${POSTGRES_PASSWORD:-sportbet}@postgres:5432/${POSTGRES_DB:-sportbet}?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
