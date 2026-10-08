@@ -75,7 +75,66 @@ flowchart LR
 
 ## Seguridad: JWT corto + refresh revocable, roles, middleware
 
-_Pendiente._
+### Diseño
+
+| Elemento | Decisión |
+|---|---|
+| Token de acceso | JWT HS256, 15 min (`JWT_ACCESS_TTL`). Claims: `sub` (ID de usuario), `role`, `iss`, `iat` y `exp`. En el frontend vive solo en memoria, nunca en `localStorage` |
+| Refresh token | Valor opaco aleatorio de 32 bytes. En la base de datos se guarda solo su sha256 (`refresh_tokens.token_hash`). Dura 7 días (`JWT_REFRESH_TTL`) y se rota en cada uso |
+| Transporte del refresh | Cookie `httpOnly`, `SameSite=Strict`, `Path=/api/v1/auth`, `Secure` en producción. JavaScript no puede leerla |
+| Cierre de sesión | `POST /auth/logout` marca `revoked_at`. Un refresh revocado o vencido responde 401 |
+| Contraseñas | bcrypt con costo por defecto, mínimo 8 caracteres |
+| Roles | `user` y `admin` (`users.role`). Las rutas `/admin/*` exigen `RequireRole(admin)` |
+| Validación | Solo se acepta HS256 (`WithValidMethods`), con verificación de `iss`, para impedir tokens con `alg: none` o con otro algoritmo |
+| Secreto | `JWT_SECRET` de al menos 32 caracteres. Fuera de desarrollo, la API no arranca si es más corto |
+
+### Flujo de sesión
+
+```mermaid
+sequenceDiagram
+    participant A as Angular
+    participant API as API (auth)
+    participant DB as PostgreSQL
+    A->>API: POST /auth/login {email, password}
+    API->>DB: busca usuario, bcrypt.Compare
+    API->>DB: INSERT refresh_tokens (sha256)
+    API-->>A: {accessToken} + Set-Cookie sb_refresh (httpOnly)
+    A->>API: GET /bets (Authorization: Bearer …)
+    API-->>A: 200
+    Note over A,API: a los 15 min el token vence
+    A->>API: GET /bets → 401
+    A->>API: POST /auth/refresh (cookie)
+    API->>DB: valida hash, revoca el anterior, inserta uno nuevo
+    API-->>A: {accessToken} + nueva cookie
+    A->>API: reintenta GET /bets → 200
+```
+
+En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola vez a `/auth/refresh`, aunque haya varios requests fallando a la vez, y reintenta. Al recargar la página, `provideAppInitializer` recupera la sesión desde la cookie.
+
+### Estado de implementación
+
+| Pieza | Estado | Archivo |
+|---|---|---|
+| Middleware `RequireAuth` / `RequireRole` (contrato `Authenticator`) | ✅ Hecho y probado | [`auth/presentation/middleware.go`](../backend/internal/auth/presentation/middleware.go) |
+| Emisión y validación de JWT | ✅ Hecho | [`auth/infrastructure/jwt.go`](../backend/internal/auth/infrastructure/jwt.go) |
+| Hash de contraseñas | ✅ Hecho | [`auth/domain/password.go`](../backend/internal/auth/domain/password.go) |
+| Tablas `users` y `refresh_tokens` | ✅ Hecho | [`migrations/0001_init.sql`](../backend/migrations/0001_init.sql) |
+| Interceptor, store de sesión y guards en Angular | ✅ Hecho | [`frontend/src/app/core/auth/`](../frontend/src/app/core/auth/) |
+| `POST /auth/register`: crea el usuario y su billetera en una sola transacción | ⏳ Pendiente | — |
+| `POST /auth/login`, `/auth/refresh` (con rotación) y `/auth/logout` | ⏳ Pendiente | — |
+| `GET /me` y `/admin/users` | ⏳ Pendiente | — |
+| Seed del admin (`ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`) | ⏳ Pendiente | — |
+
+### Riesgos y mitigaciones
+
+| Amenaza | Mitigación |
+|---|---|
+| Robo del token por XSS | El token de acceso vive solo en memoria y dura 15 min. El refresh va en una cookie que JavaScript no lee |
+| CSRF sobre `/auth/refresh` | Cookie `SameSite=Strict` restringida a `Path=/api/v1/auth`. CORS solo permite `CORS_ALLOWED_ORIGINS` |
+| Reutilización de un refresh robado | Rotación en cada uso. El anterior queda revocado |
+| Fuerza bruta en login | bcrypt encarece cada intento. *Mejora futura:* límite de intentos por IP |
+| Escalada de privilegios | El rol viaja firmado en el JWT. Las rutas de admin pasan por `RequireRole` |
+| Fuga de la base de datos | Solo se guardan hashes: bcrypt para contraseñas y sha256 para los refresh tokens |
 
 ## Atributos de calidad (Acme)
 
