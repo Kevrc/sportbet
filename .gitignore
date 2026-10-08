@@ -1,0 +1,17 @@
+# Entorno
+.env
+*.local
+
+# Go
+backend/bin/
+backend/*.test
+backend/coverage.out
+
+# Código generado (Swagger, clientes): no se sube
+backend/docs/swagger/
+frontend/src/app/core/api/generated/
+
+# Sistema
+.DS_Store
+Thumbs.db
+.idea/
