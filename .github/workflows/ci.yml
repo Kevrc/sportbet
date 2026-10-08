@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: sportbet
+          POSTGRES_PASSWORD: sportbet
+          POSTGRES_DB: sportbet_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sportbet"
+          --health-interval 5s
+          --health-retries 10
+    env:
+      # Las pruebas de integración usan esta variable y hacen t.Skip si no existe.
+      TEST_DATABASE_URL: postgres://sportbet:sportbet@localhost:5432/sportbet_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: go mod tidy
+        run: go mod tidy -diff
+      - run: go vet ./...
+      - name: reglas de importación
+        run: ../scripts/check-imports.sh
+      - run: go build ./...
+      - run: go test -race -count=1 ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx ng build
+      - run: npm test
