@@ -1,0 +1,19 @@
+{
+  "_comment": "Partido de ejemplo para el ReplayProvider. Persona 2 lo reemplaza por un partido real grabado. offsetSeconds es tiempo de partido; REPLAY_SPEED lo acelera.",
+  "fixture": {
+    "externalId": "replay-1",
+    "league": { "externalId": "replay-league", "name": "Liga Demo", "country": "Demo" },
+    "home": { "externalId": "replay-home", "name": "Atlético Demo" },
+    "away": { "externalId": "replay-away", "name": "Deportivo Prueba" }
+  },
+  "frames": [
+    { "offsetSeconds": 0, "status": "NS", "home": 0, "away": 0, "minute": 0 },
+    { "offsetSeconds": 60, "status": "1H", "home": 0, "away": 0, "minute": 1 },
+    { "offsetSeconds": 1080, "status": "1H", "home": 1, "away": 0, "minute": 18 },
+    { "offsetSeconds": 2700, "status": "HT", "home": 1, "away": 0, "minute": 45 },
+    { "offsetSeconds": 3600, "status": "2H", "home": 1, "away": 0, "minute": 46 },
+    { "offsetSeconds": 4380, "status": "2H", "home": 1, "away": 1, "minute": 59 },
+    { "offsetSeconds": 5400, "status": "2H", "home": 2, "away": 1, "minute": 77 },
+    { "offsetSeconds": 6300, "status": "FT", "home": 2, "away": 1, "minute": 90 }
+  ]
+}
