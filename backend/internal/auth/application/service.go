@@ -2,11 +2,14 @@ package application
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"time"
 
 	"sportbet/internal/auth/domain"
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/db"
+	"sportbet/internal/shared/errs"
 	"sportbet/internal/shared/money"
 )
 
@@ -76,6 +79,39 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (Session, erro
 	return s.session(u, refreshPlain, refreshExp)
 }
 
+var errInvalidCredentials = errs.New(errs.ErrUnauthorized, "INVALID_CREDENTIALS", "email o contraseña incorrectos")
+
+// Login valida las credenciales y emite una sesión nueva. Responde lo mismo
+// si el email no existe o si la contraseña es incorrecta.
+func (s *Service) Login(ctx context.Context, email, password string) (Session, error) {
+	u, err := s.users.FindByEmail(ctx, domain.NormalizeEmail(email))
+	if errors.Is(err, errs.ErrNotFound) {
+		// Compara contra un hash ficticio para que el tiempo de respuesta no
+		// revele si el email existe.
+		domain.CheckPassword(dummyHash(), password)
+		return Session{}, errInvalidCredentials
+	}
+	if err != nil {
+		return Session{}, err
+	}
+	if !domain.CheckPassword(u.PasswordHash, password) {
+		return Session{}, errInvalidCredentials
+	}
+	if !u.IsActive() {
+		return Session{}, errs.New(errs.ErrForbidden, "USER_BLOCKED", "la cuenta está bloqueada")
+	}
+
+	refreshPlain, refreshHash := NewRefreshToken()
+	refreshExp := s.clock().Add(s.cfg.RefreshTTL)
+	err = s.tx(ctx, func(q db.Querier) error {
+		return s.refresh.Create(ctx, q, u.ID, refreshHash, refreshExp)
+	})
+	if err != nil {
+		return Session{}, err
+	}
+	return s.session(u, refreshPlain, refreshExp)
+}
+
 func (s *Service) session(u domain.User, refreshPlain string, refreshExp time.Time) (Session, error) {
 	access, accessExp, err := s.tokens.Issue(u.CurrentUser())
 	if err != nil {
@@ -89,3 +125,8 @@ func (s *Service) session(u domain.User, refreshPlain string, refreshExp time.Ti
 		RefreshExpiresAt: refreshExp,
 	}, nil
 }
+
+var dummyHash = sync.OnceValue(func() string {
+	h, _ := domain.HashPassword("contraseña-ficticia-para-igualar-tiempos")
+	return h
+})
