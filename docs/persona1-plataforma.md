@@ -120,6 +120,8 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 | Hash de contraseñas | ✅ Hecho | [`auth/domain/password.go`](../backend/internal/auth/domain/password.go) |
 | Tablas `users` y `refresh_tokens` | ✅ Hecho | [`migrations/0001_init.sql`](../backend/migrations/0001_init.sql) |
 | Interceptor, store de sesión y guards en Angular | ✅ Hecho | [`frontend/src/app/core/auth/`](../frontend/src/app/core/auth/) |
+| Pantallas de login y registro (mismas reglas de contraseña que el backend, `returnUrl` solo interno) | ✅ Hecho y probado | [`features/auth/`](../frontend/src/app/features/auth/) |
+| Panel de administración: listar usuarios, bloquear o desbloquear, dar o quitar admin | ✅ Hecho y probado | [`features/admin/`](../frontend/src/app/features/admin/) |
 | `POST /auth/register`: crea el usuario, su billetera y su refresh token en una sola transacción | ✅ Hecho y probado | [`auth/application/service.go`](../backend/internal/auth/application/service.go) |
 | `POST /auth/login`: misma respuesta si el email no existe o la contraseña falla; 403 si la cuenta está bloqueada | ✅ Hecho y probado | [`auth/presentation/handlers.go`](../backend/internal/auth/presentation/handlers.go) |
 | `POST /auth/refresh`: rota el token en una sola sentencia SQL; de dos refresh simultáneos con el mismo token solo uno gana | ✅ Hecho y probado | [`auth/infrastructure/refresh_token_repository.go`](../backend/internal/auth/infrastructure/refresh_token_repository.go) |
