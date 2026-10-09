@@ -59,7 +59,7 @@ func (s *stubService) Logout(_ context.Context, tok string) error {
 func do(t *testing.T, svc *stubService, path, body string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
-	presentation.NewHandlers(svc, true).Routes(r)
+	presentation.NewHandlers(svc, true, time.Now).Routes(r)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 	for _, c := range cookies {
@@ -172,4 +172,28 @@ func TestLogoutHandler(t *testing.T) {
 	if rec := do(t, svc, "/auth/logout", ""); rec.Code != http.StatusNoContent || !svc.logoutCalled {
 		t.Fatalf("logout sin cookie: status = %d", rec.Code)
 	}
+}
+
+func TestCookieMaxAgeUsesInjectedClock(t *testing.T) {
+	fixed := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	svc := &fixedSessionService{exp: fixed.Add(2 * time.Hour)}
+	r := chi.NewRouter()
+	presentation.NewHandlers(svc, true, func() time.Time { return fixed }).Routes(r)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"email":"a@b.c","password":"x"}`)))
+	c := rec.Result().Cookies()
+	if len(c) != 1 || c[0].MaxAge != 7200 {
+		t.Fatalf("MaxAge = %v; want 7200 (2 h según el reloj inyectado, no la hora real)", c)
+	}
+}
+
+type fixedSessionService struct {
+	stubService
+	exp time.Time
+}
+
+func (s *fixedSessionService) Login(context.Context, string, string) (application.Session, error) {
+	sess := s.session()
+	sess.RefreshExpiresAt = s.exp
+	return sess, nil
 }
