@@ -17,8 +17,10 @@ type JWTIssuer struct {
 	now    func() time.Time
 }
 
-func NewJWTIssuer(secret, issuer string, ttl time.Duration) *JWTIssuer {
-	return &JWTIssuer{secret: []byte(secret), issuer: issuer, ttl: ttl, now: time.Now}
+// NewJWTIssuer recibe el reloj de la app (app.Deps.Clock) para que el
+// vencimiento del token de acceso y el del refresh salgan del mismo reloj.
+func NewJWTIssuer(secret, issuer string, ttl time.Duration, now func() time.Time) *JWTIssuer {
+	return &JWTIssuer{secret: []byte(secret), issuer: issuer, ttl: ttl, now: now}
 }
 
 type claims struct {
@@ -27,13 +29,14 @@ type claims struct {
 }
 
 func (j *JWTIssuer) Issue(u contracts.CurrentUser) (string, time.Time, error) {
-	exp := j.now().Add(j.ttl)
+	now := j.now()
+	exp := now.Add(j.ttl)
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims{
 		Role: u.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.ID,
 			Issuer:    j.issuer,
-			IssuedAt:  jwt.NewNumericDate(j.now()),
+			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(exp),
 		},
 	})

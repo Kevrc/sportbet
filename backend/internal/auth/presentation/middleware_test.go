@@ -12,7 +12,7 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
-	issuer := infrastructure.NewJWTIssuer("secreto-de-prueba-de-32-caracteres!!", "sportbet", time.Minute)
+	issuer := infrastructure.NewJWTIssuer("secreto-de-prueba-de-32-caracteres!!", "sportbet", time.Minute, time.Now)
 	mw := presentation.NewMiddleware(issuer)
 	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := contracts.MustCurrentUser(r.Context())
