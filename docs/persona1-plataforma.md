@@ -122,7 +122,8 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 | Interceptor, store de sesión y guards en Angular | ✅ Hecho | [`frontend/src/app/core/auth/`](../frontend/src/app/core/auth/) |
 | `POST /auth/register`: crea el usuario, su billetera y su refresh token en una sola transacción | ✅ Hecho y probado | [`auth/application/service.go`](../backend/internal/auth/application/service.go) |
 | `POST /auth/login`: misma respuesta si el email no existe o la contraseña falla; 403 si la cuenta está bloqueada | ✅ Hecho y probado | [`auth/presentation/handlers.go`](../backend/internal/auth/presentation/handlers.go) |
-| `POST /auth/refresh` (con rotación) y `/auth/logout` | ⏳ Pendiente | — |
+| `POST /auth/refresh`: rota el token en una sola sentencia SQL; de dos refresh simultáneos con el mismo token solo uno gana | ✅ Hecho y probado | [`auth/infrastructure/refresh_token_repository.go`](../backend/internal/auth/infrastructure/refresh_token_repository.go) |
+| `POST /auth/logout`: revoca el token y borra la cookie; es idempotente | ✅ Hecho y probado | [`auth/presentation/handlers.go`](../backend/internal/auth/presentation/handlers.go) |
 | `GET /me` y `/admin/users` | ⏳ Pendiente | — |
 | Seed del admin (`ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`) | ⏳ Pendiente | — |
 
@@ -132,7 +133,7 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 |---|---|
 | Robo del token por XSS | El token de acceso vive solo en memoria y dura 15 min. El refresh va en una cookie que JavaScript no lee |
 | CSRF sobre `/auth/refresh` | Cookie `SameSite=Strict` restringida a `Path=/api/v1/auth`. CORS solo permite `CORS_ALLOWED_ORIGINS` |
-| Reutilización de un refresh robado | Rotación en cada uso. El anterior queda revocado |
+| Reutilización de un refresh robado | Rotación en cada uso. El anterior queda revocado y reusarlo responde 401. *Mejora futura:* al detectar un reuso, revocar todas las sesiones del usuario |
 | Fuerza bruta en login | bcrypt encarece cada intento. *Mejora futura:* límite de intentos por IP |
 | Escalada de privilegios | El rol viaja firmado en el JWT. Las rutas de admin pasan por `RequireRole` |
 | Fuga de la base de datos | Solo se guardan hashes: bcrypt para contraseñas y sha256 para los refresh tokens |
