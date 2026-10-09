@@ -1,0 +1,120 @@
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { Observable, of, throwError } from 'rxjs';
+
+import { EventDetail } from '../../../core/api/models';
+import { ApiError } from '../../../core/http/error.interceptor';
+import { detail, market } from '../events-testing';
+import { EventsService } from '../events.service';
+import { EventDetailPage } from './event-detail.page';
+
+function setup(get: (id: string) => Observable<EventDetail>, id = 'e1') {
+  const calls: string[] = [];
+  const service = { get: (i: string) => (calls.push(i), get(i)) };
+  TestBed.configureTestingModule({
+    imports: [EventDetailPage],
+    providers: [provideRouter([]), { provide: EventsService, useValue: service }],
+  });
+  const fixture = TestBed.createComponent(EventDetailPage);
+  fixture.componentRef.setInput('id', id);
+  return { fixture, calls, el: fixture.nativeElement as HTMLElement };
+}
+
+async function settle(fixture: { whenStable(): Promise<unknown>; detectChanges(): void }) {
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
+const farFuture = '2099-01-01T18:00:00Z';
+const selections = (el: HTMLElement) => [...el.querySelectorAll<HTMLButtonElement>('.selection')];
+
+describe('EventDetailPage', () => {
+  it('muestra equipos, liga y las cuotas con dos decimales', async () => {
+    const { fixture, el, calls } = setup(() => of(detail({ startAt: farFuture })));
+    await settle(fixture);
+
+    expect(calls).toEqual(['e1']);
+    expect(el.textContent).toContain('Local e1');
+    expect(el.textContent).toContain('Visita e1');
+    expect(el.textContent).toContain('Resultado final (1X2)');
+    expect(selections(el).map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Local, cuota 2.14',
+      'Empate, cuota 3.30',
+      'Visita, cuota 1.97',
+    ]);
+    expect(selections(el).map((b) => b.querySelector('.odd')!.textContent)).toEqual([
+      '2.14',
+      '3.30',
+      '1.97',
+    ]);
+    expect(selections(el).every((b) => !b.disabled)).toBe(true);
+  });
+
+  it('deshabilita las selecciones de un mercado cerrado y dice por qué', async () => {
+    const { fixture, el } = setup(() =>
+      of(detail({ startAt: farFuture, markets: [market({ status: 'CLOSED' })] })),
+    );
+    await settle(fixture);
+    expect(selections(el).every((b) => b.disabled)).toBe(true);
+    expect(el.querySelector('.lock')!.textContent).toContain('Mercado cerrado');
+  });
+
+  it('deshabilita todo si el partido ya empezó', async () => {
+    const { fixture, el } = setup(() =>
+      of(detail({ status: 'LIVE', minute: 12, homeScore: 0, awayScore: 1, startAt: farFuture })),
+    );
+    await settle(fixture);
+    expect(selections(el).every((b) => b.disabled)).toBe(true);
+    expect(el.textContent).toContain('En vivo');
+    expect(el.textContent).toContain("12'");
+    expect(el.querySelector('.score')!.textContent).toContain('0 - 1');
+  });
+
+  it('muestra "vs" y no un marcador cuando el partido no ha empezado', async () => {
+    const { fixture, el } = setup(() => of(detail({ startAt: farFuture })));
+    await settle(fixture);
+    expect(el.querySelector('.vs')!.textContent).toBe('vs');
+    expect(el.querySelector('.score')).toBeNull();
+  });
+
+  it('avisa cuando el evento no tiene mercados', async () => {
+    const { fixture, el } = setup(() => of(detail({ markets: [] })));
+    await settle(fixture);
+    expect(el.textContent).toContain('todavía no tiene mercados');
+  });
+
+  it('404: dice que el evento no existe, sin botón de reintento', async () => {
+    const { fixture, el } = setup(() =>
+      throwError(() => new ApiError(404, 'EVENT_NOT_FOUND', 'no existe')),
+    );
+    await settle(fixture);
+    expect(el.textContent).toContain('no existe o ya no está disponible');
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('otro error: muestra el aviso y reintenta con el mismo id', async () => {
+    let fail = true;
+    const { fixture, el, calls } = setup(() =>
+      fail
+        ? throwError(() => new ApiError(0, 'NETWORK_ERROR', 'x'))
+        : of(detail({ startAt: farFuture })),
+    );
+    await settle(fixture);
+    expect(el.querySelector('[role="alert"]')!.textContent).toContain('No se pudo cargar');
+
+    fail = false;
+    el.querySelector<HTMLButtonElement>('[role="alert"] button')!.click();
+    await settle(fixture);
+    expect(calls).toEqual(['e1', 'e1']);
+    expect(selections(el)).toHaveLength(3);
+  });
+
+  it('si cambia el id de la ruta, carga el otro evento', async () => {
+    const { fixture, calls } = setup(() => of(detail({ startAt: farFuture })));
+    await settle(fixture);
+    fixture.componentRef.setInput('id', 'e2');
+    await settle(fixture);
+    expect(calls).toEqual(['e1', 'e2']);
+  });
+});
