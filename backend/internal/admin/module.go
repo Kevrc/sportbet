@@ -1,8 +1,7 @@
 // Package admin: Auditoría y estadísticas del panel. Consume BetPlaced y BetSettled del bus.
+// La gestión de usuarios (/admin/users) vive en el módulo users.
 //
 // Dueño: Persona 1. Endpoints (ver openapi.yaml):
-//   - GET /admin/users
-//   - PATCH /admin/users/{id}
 //   - GET /admin/stats
 //   - GET /admin/audit
 package admin
