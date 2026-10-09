@@ -1,6 +1,6 @@
 # Persona 3 — Núcleo transaccional
 
-**GitHub:** _pendiente_ · **Módulos:** betting, wallet, settlement
+**GitHub:** @By-Alvarez06 · **Módulos:** betting, wallet, settlement
 
 ## Modelo de dominio
 
