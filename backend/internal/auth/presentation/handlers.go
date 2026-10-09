@@ -21,6 +21,8 @@ const (
 type authService interface {
 	Register(ctx context.Context, in application.RegisterInput) (application.Session, error)
 	Login(ctx context.Context, email, password string) (application.Session, error)
+	Refresh(ctx context.Context, refreshToken string) (application.Session, error)
+	Logout(ctx context.Context, refreshToken string) error
 }
 
 type Handlers struct {
@@ -37,6 +39,8 @@ func NewHandlers(svc authService, secureCookie bool) *Handlers {
 func (h *Handlers) Routes(r chi.Router) {
 	r.Post("/auth/register", h.register)
 	r.Post("/auth/login", h.login)
+	r.Post("/auth/refresh", h.refresh)
+	r.Post("/auth/logout", h.logout)
 }
 
 // ---- DTOs ----
@@ -95,6 +99,47 @@ func (h *Handlers) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeSession(w, http.StatusOK, s)
+}
+
+func (h *Handlers) refresh(w http.ResponseWriter, r *http.Request) {
+	s, err := h.svc.Refresh(r.Context(), refreshCookie(r))
+	if err != nil {
+		// Si el refresh falla, la cookie ya no sirve: se borra para que el
+		// navegador no la siga enviando.
+		h.clearCookie(w)
+		httpx.WriteError(w, r, err)
+		return
+	}
+	h.writeSession(w, http.StatusOK, s)
+}
+
+func (h *Handlers) logout(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.Logout(r.Context(), refreshCookie(r)); err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	h.clearCookie(w)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func refreshCookie(r *http.Request) string {
+	c, err := r.Cookie(RefreshCookieName)
+	if err != nil {
+		return ""
+	}
+	return c.Value
+}
+
+func (h *Handlers) clearCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     RefreshCookieName,
+		Value:    "",
+		Path:     RefreshCookiePath,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   h.secureCookie,
+		SameSite: http.SameSiteStrictMode,
+	})
 }
 
 func (h *Handlers) writeSession(w http.ResponseWriter, status int, s application.Session) {
