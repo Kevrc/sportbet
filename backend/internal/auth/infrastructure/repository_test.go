@@ -107,3 +107,48 @@ func TestRefreshTokenRepository(t *testing.T) {
 		t.Fatalf("hash repetido: err = %v; want violación única", err)
 	}
 }
+
+func TestRefreshTokenConsumeAndRevoke(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	u, _ := domain.NewUser("ana@mail.com", "Ana", "secreto123")
+	u.PasswordHash = "hash"
+	users := infrastructure.NewUserRepository(pool)
+	created, err := users.Create(ctx, pool, u)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found, err := users.FindByID(ctx, pool, created.ID); err != nil || found.Email != "ana@mail.com" {
+		t.Fatalf("FindByID = %+v, %v", found, err)
+	}
+
+	repo := infrastructure.NewRefreshTokenRepository()
+	now := time.Now()
+	_, vigente := application.NewRefreshToken()
+	_, vencido := application.NewRefreshToken()
+	_, revocado := application.NewRefreshToken()
+	for _, tok := range []struct {
+		hash []byte
+		exp  time.Time
+	}{{vigente, now.Add(time.Hour)}, {vencido, now.Add(-time.Minute)}, {revocado, now.Add(time.Hour)}} {
+		if err := repo.Create(ctx, pool, created.ID, tok.hash, tok.exp); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repo.Revoke(ctx, pool, revocado, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Revoke(ctx, pool, revocado, now); err != nil {
+		t.Fatalf("Revoke debe ser idempotente: %v", err)
+	}
+
+	uid, err := repo.Consume(ctx, pool, vigente, now)
+	if err != nil || uid != created.ID {
+		t.Fatalf("Consume vigente = %q, %v", uid, err)
+	}
+	for name, h := range map[string][]byte{"ya consumido": vigente, "vencido": vencido, "revocado": revocado, "inexistente": {1, 2, 3}} {
+		if _, err := repo.Consume(ctx, pool, h, now); !errors.Is(err, errs.ErrUnauthorized) {
+			t.Errorf("Consume %s: err = %v; want ErrUnauthorized", name, err)
+		}
+	}
+}
