@@ -124,8 +124,10 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 | `POST /auth/login`: misma respuesta si el email no existe o la contraseña falla; 403 si la cuenta está bloqueada | ✅ Hecho y probado | [`auth/presentation/handlers.go`](../backend/internal/auth/presentation/handlers.go) |
 | `POST /auth/refresh`: rota el token en una sola sentencia SQL; de dos refresh simultáneos con el mismo token solo uno gana | ✅ Hecho y probado | [`auth/infrastructure/refresh_token_repository.go`](../backend/internal/auth/infrastructure/refresh_token_repository.go) |
 | `POST /auth/logout`: revoca el token y borra la cookie; es idempotente | ✅ Hecho y probado | [`auth/presentation/handlers.go`](../backend/internal/auth/presentation/handlers.go) |
-| `GET /me` y `/admin/users` | ⏳ Pendiente | — |
-| Seed del admin (`ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`) | ⏳ Pendiente | — |
+| `GET /me` | ✅ Hecho y probado | [`users/presentation/handlers.go`](../backend/internal/users/presentation/handlers.go) |
+| `GET /admin/users` (paginado) y `PATCH /admin/users/{id}` (rol y estado). Un admin no puede quitarse el rol ni bloquearse (409 `CANNOT_MODIFY_SELF`) | ✅ Hecho y probado | [`users/application/service.go`](../backend/internal/users/application/service.go) |
+| Admin inicial al arrancar (`ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`), idempotente y sin promover usuarios existentes | ✅ Hecho y probado | [`auth/application/service.go`](../backend/internal/auth/application/service.go) |
+| `GET /admin/stats` y `GET /admin/audit` (consumen `BetPlaced` y `BetSettled`) | ⏳ Pendiente; las estadísticas son lo segundo en el orden de recorte | — |
 
 ### Riesgos y mitigaciones
 
@@ -135,7 +137,9 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 | CSRF sobre `/auth/refresh` | Cookie `SameSite=Strict` restringida a `Path=/api/v1/auth`. CORS solo permite `CORS_ALLOWED_ORIGINS` |
 | Reutilización de un refresh robado | Rotación en cada uso. El anterior queda revocado y reusarlo responde 401. *Mejora futura:* al detectar un reuso, revocar todas las sesiones del usuario |
 | Fuerza bruta en login | bcrypt encarece cada intento. *Mejora futura:* límite de intentos por IP |
-| Escalada de privilegios | El rol viaja firmado en el JWT. Las rutas de admin pasan por `RequireRole` |
+| Escalada de privilegios | El rol viaja firmado en el JWT. Las rutas de admin pasan por `RequireRole`. El seed nunca promueve a un usuario existente |
+| Usuario bloqueado con sesión abierta | No puede hacer login ni refresh (403). Su token de acceso vigente dura como máximo 15 min más |
+| Sistema sin administradores | Un admin no puede quitarse su rol ni bloquearse a sí mismo |
 | Fuga de la base de datos | Solo se guardan hashes: bcrypt para contraseñas y sha256 para los refresh tokens |
 
 ## Atributos de calidad (Acme)
