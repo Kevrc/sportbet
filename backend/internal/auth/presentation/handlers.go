@@ -28,10 +28,13 @@ type authService interface {
 type Handlers struct {
 	svc          authService
 	secureCookie bool
+	now          func() time.Time
 }
 
-func NewHandlers(svc authService, secureCookie bool) *Handlers {
-	return &Handlers{svc: svc, secureCookie: secureCookie}
+// NewHandlers recibe el reloj de la app para que el Max-Age de la cookie se
+// calcule con el mismo reloj que fijó el vencimiento del refresh token.
+func NewHandlers(svc authService, secureCookie bool, now func() time.Time) *Handlers {
+	return &Handlers{svc: svc, secureCookie: secureCookie, now: now}
 }
 
 // Routes registra rutas completas; nunca r.Route("/auth") porque el prefijo
@@ -148,7 +151,7 @@ func (h *Handlers) writeSession(w http.ResponseWriter, status int, s application
 		Value:    s.RefreshToken,
 		Path:     RefreshCookiePath,
 		Expires:  s.RefreshExpiresAt,
-		MaxAge:   int(time.Until(s.RefreshExpiresAt).Seconds()),
+		MaxAge:   int(s.RefreshExpiresAt.Sub(h.now()).Seconds()),
 		HttpOnly: true,
 		Secure:   h.secureCookie,
 		SameSite: http.SameSiteStrictMode,
