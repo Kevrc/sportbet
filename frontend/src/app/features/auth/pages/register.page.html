@@ -1,0 +1,68 @@
+<section class="card" aria-labelledby="register-title">
+  <h1 id="register-title">Crear cuenta</h1>
+  <p class="subtitle">Empiezas con 1 000.00 de saldo virtual para apostar.</p>
+
+  @if (error(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="field">
+      <label for="register-email">Email</label>
+      <input
+        id="register-email"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        [attr.aria-invalid]="!!fieldError('email')"
+        aria-describedby="register-email-error"
+      />
+      @if (fieldError('email'); as msg) {
+        <span id="register-email-error" class="field-error">{{ msg }}</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="register-name">Nombre visible</label>
+      <input
+        id="register-name"
+        type="text"
+        formControlName="displayName"
+        autocomplete="nickname"
+        maxlength="40"
+        [attr.aria-invalid]="!!fieldError('displayName')"
+        aria-describedby="register-name-error"
+      />
+      @if (fieldError('displayName'); as msg) {
+        <span id="register-name-error" class="field-error">{{ msg }}</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="register-password">Contraseña</label>
+      <input
+        id="register-password"
+        type="password"
+        formControlName="password"
+        autocomplete="new-password"
+        [attr.aria-invalid]="!!fieldError('password')"
+        aria-describedby="register-password-hint register-password-error"
+      />
+      <span id="register-password-hint" class="hint">Mínimo {{ minChars }} caracteres.</span>
+      @if (fieldError('password'); as msg) {
+        <span id="register-password-error" class="field-error">{{ msg }}</span>
+      }
+    </div>
+
+    <button type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'Creando cuenta…' : 'Crear cuenta' }}
+    </button>
+  </form>
+
+  <p class="switch">
+    ¿Ya tienes cuenta?
+    <a routerLink="/auth/login" [queryParams]="returnUrl() ? { returnUrl: returnUrl() } : {}"
+      >Iniciar sesión</a
+    >
+  </p>
+</section>
