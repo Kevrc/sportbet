@@ -16,8 +16,14 @@ func (r *repositoryStub) ListEventMarkets(context.Context, string) ([]Market, er
 	return nil, nil
 }
 func (r *repositoryStub) EnsureMarkets(context.Context, string, int) error { return nil }
+func (r *repositoryStub) EnsureUpcomingMarkets(context.Context, time.Time, int) error {
+	return nil
+}
 func (r *repositoryStub) CloseMarketsForEvent(context.Context, string) error {
 	r.closed = true
+	return nil
+}
+func (r *repositoryStub) CloseMarketsPastCutoff(context.Context, time.Time) error {
 	return nil
 }
 func (r *repositoryStub) GetSelections(context.Context, []string) (map[string]contracts.SelectionInfo, error) {

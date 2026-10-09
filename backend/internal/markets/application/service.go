@@ -33,7 +33,9 @@ type SelectionCode struct {
 type Repository interface {
 	ListEventMarkets(context.Context, string) ([]Market, error)
 	EnsureMarkets(context.Context, string, int) error
+	EnsureUpcomingMarkets(context.Context, time.Time, int) error
 	CloseMarketsForEvent(context.Context, string) error
+	CloseMarketsPastCutoff(context.Context, time.Time) error
 	GetSelections(context.Context, []string) (map[string]contracts.SelectionInfo, error)
 	GetEventResult(context.Context, string) (contracts.EventResult, error)
 	ListFinishedSince(context.Context, time.Time) ([]contracts.EventResult, error)
@@ -66,11 +68,22 @@ func (s *Service) EnsureMarkets(ctx context.Context, eventID string) error {
 	return s.repository.EnsureMarkets(ctx, eventID, s.oneXTwoMargin)
 }
 
+func (s *Service) EnsureUpcomingMarkets(ctx context.Context, now time.Time) error {
+	if s.oneXTwoMargin < 0 || s.oneXTwoMargin >= 100 {
+		return errs.New(errs.ErrValidation, "INVALID_ODDS_MARGIN", "el margen de cuotas 1X2 debe estar entre 0 y 99")
+	}
+	return s.repository.EnsureUpcomingMarkets(ctx, now, s.oneXTwoMargin)
+}
+
 func (s *Service) CloseMarketsForEvent(ctx context.Context, eventID string) error {
 	if eventID == "" {
 		return errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento es obligatorio")
 	}
 	return s.repository.CloseMarketsForEvent(ctx, eventID)
+}
+
+func (s *Service) CloseMarketsPastCutoff(ctx context.Context, cutoff time.Time) error {
+	return s.repository.CloseMarketsPastCutoff(ctx, cutoff)
 }
 
 func (s *Service) GetSelections(ctx context.Context, ids []string) (map[string]contracts.SelectionInfo, error) {

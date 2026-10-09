@@ -144,12 +144,60 @@ func (r *Repository) EnsureMarkets(ctx context.Context, eventID string, margin i
 	return nil
 }
 
+func (r *Repository) EnsureUpcomingMarkets(ctx context.Context, now time.Time, margin int) error {
+	rows, err := r.pool.Query(ctx, `
+		SELECT e.id::text
+		FROM events e
+		WHERE e.status = 'SCHEDULED'
+		  AND e.start_at > $1
+		  AND NOT EXISTS (
+		      SELECT 1 FROM markets m WHERE m.event_id = e.id
+		  )
+		ORDER BY e.start_at`, now.Add(contracts.MarketCloseLead))
+	if err != nil {
+		return fmt.Errorf("markets: buscar eventos sin mercados: %w", err)
+	}
+	var eventIDs []string
+	for rows.Next() {
+		var eventID string
+		if err := rows.Scan(&eventID); err != nil {
+			rows.Close()
+			return fmt.Errorf("markets: leer evento sin mercados: %w", err)
+		}
+		eventIDs = append(eventIDs, eventID)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("markets: recorrer eventos sin mercados: %w", err)
+	}
+	rows.Close()
+	for _, eventID := range eventIDs {
+		if err := r.EnsureMarkets(ctx, eventID, margin); err != nil {
+			return fmt.Errorf("markets: inicializar mercados de %s: %w", eventID, err)
+		}
+	}
+	return nil
+}
+
 func (r *Repository) CloseMarketsForEvent(ctx context.Context, eventID string) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE markets SET status = 'CLOSED'
 		WHERE event_id = $1::uuid AND status = 'OPEN'`, eventID)
 	if err != nil {
 		return fmt.Errorf("markets: cerrar mercados: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) CloseMarketsPastCutoff(ctx context.Context, cutoff time.Time) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE markets m SET status = 'CLOSED'
+		FROM events e
+		WHERE e.id = m.event_id
+		  AND m.status = 'OPEN'
+		  AND (e.status <> 'SCHEDULED' OR e.start_at <= $1)`, cutoff)
+	if err != nil {
+		return fmt.Errorf("markets: cierre por reloj: %w", err)
 	}
 	return nil
 }
