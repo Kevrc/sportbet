@@ -46,4 +46,17 @@ func Register(r chi.Router, d app.Deps) {
 		},
 	)
 	presentation.NewHandlers(svc, d.Config.RefreshCookieSecure).Routes(r)
+
+	if d.Config.AdminSeedPassword != "" {
+		d.Lifecycle.Go("admin-seed", func(ctx context.Context) error {
+			created, err := svc.EnsureAdmin(ctx, d.Config.AdminSeedEmail, d.Config.AdminSeedPassword)
+			if err != nil {
+				return err
+			}
+			if created {
+				d.Log.Info("admin inicial creado", "email", d.Config.AdminSeedEmail)
+			}
+			return nil
+		})
+	}
 }
