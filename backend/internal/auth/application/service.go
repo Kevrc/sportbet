@@ -112,6 +112,48 @@ func (s *Service) Login(ctx context.Context, email, password string) (Session, e
 	return s.session(u, refreshPlain, refreshExp)
 }
 
+var errInvalidRefresh = errs.New(errs.ErrUnauthorized, "INVALID_REFRESH_TOKEN", "sesión vencida o cerrada")
+
+// Refresh rota el refresh token: revoca el recibido y emite uno nuevo junto
+// con un token de acceso. Relee el usuario para tomar su rol y estado actuales.
+func (s *Service) Refresh(ctx context.Context, refreshPlain string) (Session, error) {
+	if refreshPlain == "" {
+		return Session{}, errInvalidRefresh
+	}
+	now := s.clock()
+	newPlain, newHash := NewRefreshToken()
+	newExp := now.Add(s.cfg.RefreshTTL)
+	var u domain.User
+	err := s.tx(ctx, func(q db.Querier) error {
+		userID, err := s.refresh.Consume(ctx, q, HashRefreshToken(refreshPlain), now)
+		if err != nil {
+			return err
+		}
+		if u, err = s.users.FindByID(ctx, q, userID); err != nil {
+			return err
+		}
+		if !u.IsActive() {
+			return errs.New(errs.ErrForbidden, "USER_BLOCKED", "la cuenta está bloqueada")
+		}
+		return s.refresh.Create(ctx, q, u.ID, newHash, newExp)
+	})
+	if err != nil {
+		return Session{}, err
+	}
+	return s.session(u, newPlain, newExp)
+}
+
+// Logout revoca el refresh token. Es idempotente: cerrar una sesión ya cerrada
+// o sin token no es un error.
+func (s *Service) Logout(ctx context.Context, refreshPlain string) error {
+	if refreshPlain == "" {
+		return nil
+	}
+	return s.tx(ctx, func(q db.Querier) error {
+		return s.refresh.Revoke(ctx, q, HashRefreshToken(refreshPlain), s.clock())
+	})
+}
+
 func (s *Service) session(u domain.User, refreshPlain string, refreshExp time.Time) (Session, error) {
 	access, accessExp, err := s.tokens.Issue(u.CurrentUser())
 	if err != nil {

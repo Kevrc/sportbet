@@ -228,3 +228,70 @@ func TestLoginBlockedUser(t *testing.T) {
 		t.Fatalf("err = %v; want ErrForbidden", err)
 	}
 }
+
+// ---- Refresh y Logout ----
+
+func TestRefreshRotatesToken(t *testing.T) {
+	e := newEnv()
+	s, err := e.svc.Register(context.Background(), application.RegisterInput{
+		Email: "ana@mail.com", Password: "secreto123", DisplayName: "Ana",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s2, err := e.svc.Refresh(context.Background(), s.RefreshToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s2.RefreshToken == s.RefreshToken || s2.AccessToken == "" || s2.User.ID != s.User.ID {
+		t.Fatalf("sesión rotada inesperada: %+v", s2)
+	}
+	// El token anterior ya no sirve; el nuevo sí.
+	if _, err := e.svc.Refresh(context.Background(), s.RefreshToken); !errors.Is(err, errs.ErrUnauthorized) {
+		t.Fatalf("reusar el token viejo: err = %v; want ErrUnauthorized", err)
+	}
+	if _, err := e.svc.Refresh(context.Background(), s2.RefreshToken); err != nil {
+		t.Fatalf("el token nuevo debe servir: %v", err)
+	}
+}
+
+func TestRefreshRejectsInvalidTokens(t *testing.T) {
+	e := newEnv()
+	for _, tok := range []string{"", "no-existe"} {
+		if _, err := e.svc.Refresh(context.Background(), tok); !errors.Is(err, errs.ErrUnauthorized) {
+			t.Errorf("Refresh(%q) err = %v; want ErrUnauthorized", tok, err)
+		}
+	}
+}
+
+func TestRefreshBlockedUser(t *testing.T) {
+	e := newEnv()
+	s, _ := e.svc.Register(context.Background(), application.RegisterInput{
+		Email: "ana@mail.com", Password: "secreto123", DisplayName: "Ana",
+	})
+	u := e.users.byMail["ana@mail.com"]
+	u.Status = domain.StatusBlocked
+	e.users.byMail["ana@mail.com"] = u
+	if _, err := e.svc.Refresh(context.Background(), s.RefreshToken); !errors.Is(err, errs.ErrForbidden) {
+		t.Fatalf("err = %v; want ErrForbidden", err)
+	}
+}
+
+func TestLogoutRevokesToken(t *testing.T) {
+	e := newEnv()
+	s, _ := e.svc.Register(context.Background(), application.RegisterInput{
+		Email: "ana@mail.com", Password: "secreto123", DisplayName: "Ana",
+	})
+	if err := e.svc.Logout(context.Background(), s.RefreshToken); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.Logout(context.Background(), s.RefreshToken); err != nil {
+		t.Fatalf("Logout debe ser idempotente: %v", err)
+	}
+	if err := e.svc.Logout(context.Background(), ""); err != nil {
+		t.Fatalf("Logout sin token: %v", err)
+	}
+	if _, err := e.svc.Refresh(context.Background(), s.RefreshToken); !errors.Is(err, errs.ErrUnauthorized) {
+		t.Fatalf("refresh tras logout: err = %v; want ErrUnauthorized", err)
+	}
+}
