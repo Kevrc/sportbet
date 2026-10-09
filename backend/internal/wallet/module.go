@@ -12,15 +12,14 @@ import (
 
 	"sportbet/internal/shared/app"
 	"sportbet/internal/shared/contracts"
-	"sportbet/internal/shared/contracts/fakes"
+	"sportbet/internal/wallet/infrastructure"
 )
 
 // NewService construye el WalletService que main.go entrega a los demás
 // módulos. La firma está congelada; el dueño solo cambia el cuerpo cuando la
 // implementación real con pool esté lista.
 func NewService(pool *pgxpool.Pool) contracts.WalletService {
-	_ = pool
-	return fakes.NewWallet()
+	return infrastructure.NewWalletService(pool)
 }
 
 // Register registra las rutas, suscripciones al bus y workers del módulo.
