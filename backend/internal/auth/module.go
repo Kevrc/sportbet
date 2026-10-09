@@ -11,6 +11,7 @@ package auth
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -27,7 +28,7 @@ import (
 // NewAuthenticator construye el middleware CurrentUser que usan todos los
 // módulos. Firma congelada.
 func NewAuthenticator(cfg config.Config) contracts.Authenticator {
-	return presentation.NewMiddleware(infrastructure.NewJWTIssuer(cfg.JWTSecret, cfg.JWTIssuer, cfg.JWTAccessTTL))
+	return presentation.NewMiddleware(infrastructure.NewJWTIssuer(cfg.JWTSecret, cfg.JWTIssuer, cfg.JWTAccessTTL, time.Now))
 }
 
 // Register registra las rutas, suscripciones al bus y workers del módulo.
@@ -36,7 +37,7 @@ func Register(r chi.Router, d app.Deps) {
 	svc := application.NewService(
 		infrastructure.NewUserRepository(d.DB),
 		infrastructure.NewRefreshTokenRepository(),
-		infrastructure.NewJWTIssuer(d.Config.JWTSecret, d.Config.JWTIssuer, d.Config.JWTAccessTTL),
+		infrastructure.NewJWTIssuer(d.Config.JWTSecret, d.Config.JWTIssuer, d.Config.JWTAccessTTL, d.Clock),
 		d.Wallet,
 		func(ctx context.Context, fn func(q db.Querier) error) error { return db.WithTx(ctx, d.DB, fn) },
 		d.Clock,
