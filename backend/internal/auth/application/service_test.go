@@ -295,3 +295,42 @@ func TestLogoutRevokesToken(t *testing.T) {
 		t.Fatalf("refresh tras logout: err = %v; want ErrUnauthorized", err)
 	}
 }
+
+// ---- EnsureAdmin ----
+
+func TestEnsureAdminIsIdempotent(t *testing.T) {
+	e := newEnv()
+	created, err := e.svc.EnsureAdmin(context.Background(), "Admin@SportBet.local", "admin-secreto")
+	if err != nil || !created {
+		t.Fatalf("primera vez: created = %v, %v", created, err)
+	}
+	u := e.users.byMail["admin@sportbet.local"]
+	if u.Role != contracts.RoleAdmin || !domain.CheckPassword(u.PasswordHash, "admin-secreto") {
+		t.Fatalf("admin inesperado: %+v", u)
+	}
+	if bal, _ := e.wallet.Balance(context.Background(), u.ID); bal != 100000 {
+		t.Fatalf("saldo del admin = %d", bal)
+	}
+	created, err = e.svc.EnsureAdmin(context.Background(), "admin@sportbet.local", "otra-clave-123")
+	if err != nil || created {
+		t.Fatalf("segunda vez: created = %v, %v", created, err)
+	}
+	if !domain.CheckPassword(e.users.byMail["admin@sportbet.local"].PasswordHash, "admin-secreto") {
+		t.Fatal("no debe cambiar la contraseña de un admin existente")
+	}
+}
+
+func TestEnsureAdminDoesNotPromoteExistingUser(t *testing.T) {
+	e := registered(t)
+	created, err := e.svc.EnsureAdmin(context.Background(), "ana@mail.com", "admin-secreto")
+	if err != nil || created || e.users.byMail["ana@mail.com"].Role != contracts.RoleUser {
+		t.Fatalf("created = %v, err = %v, rol = %s", created, err, e.users.byMail["ana@mail.com"].Role)
+	}
+}
+
+func TestEnsureAdminRejectsWeakPassword(t *testing.T) {
+	e := newEnv()
+	if _, err := e.svc.EnsureAdmin(context.Background(), "admin@x.com", "123"); !errors.Is(err, errs.ErrValidation) {
+		t.Fatalf("err = %v; want ErrValidation", err)
+	}
+}
