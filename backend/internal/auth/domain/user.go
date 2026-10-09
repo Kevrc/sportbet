@@ -50,8 +50,8 @@ func NewUser(email, displayName, password string) (User, error) {
 	if n := utf8.RuneCountInString(displayName); n < 2 || n > 40 {
 		fields["displayName"] = "debe tener entre 2 y 40 caracteres"
 	}
-	if len(password) < MinPasswordLength {
-		fields["password"] = ErrWeakPassword.Error()
+	if err := ValidatePassword(password); err != nil {
+		fields["password"] = err.Error()
 	}
 	if len(fields) > 0 {
 		return User{}, errs.Validation(fields)
