@@ -79,11 +79,11 @@ flowchart LR
 
 | Elemento | Decisión |
 |---|---|
-| Token de acceso | JWT HS256, 15 min (`JWT_ACCESS_TTL`). Claims: `sub` (ID de usuario), `role`, `iss`, `iat` y `exp`. En el frontend vive solo en memoria, nunca en `localStorage` |
+| Token de acceso | JWT HS256, 15 min (`JWT_ACCESS_TTL`). Su vencimiento, el del refresh y el `Max-Age` de la cookie salen del mismo reloj (`app.Deps.Clock`). Claims: `sub` (ID de usuario), `role`, `iss`, `iat` y `exp`. En el frontend vive solo en memoria, nunca en `localStorage` |
 | Refresh token | Valor opaco aleatorio de 32 bytes. En la base de datos se guarda solo su sha256 (`refresh_tokens.token_hash`). Dura 7 días (`JWT_REFRESH_TTL`) y se rota en cada uso |
 | Transporte del refresh | Cookie `httpOnly`, `SameSite=Strict`, `Path=/api/v1/auth`, `Secure` en producción. JavaScript no puede leerla |
 | Cierre de sesión | `POST /auth/logout` marca `revoked_at`. Un refresh revocado o vencido responde 401 |
-| Contraseñas | bcrypt con costo por defecto, mínimo 8 caracteres |
+| Contraseñas | bcrypt con costo por defecto. Mínimo 8 caracteres (no bytes) y máximo 72 bytes, el límite de bcrypt; más largas responden 400, no 500 |
 | Roles | `user` y `admin` (`users.role`). Las rutas `/admin/*` exigen `RequireRole(admin)` |
 | Validación | Solo se acepta HS256 (`WithValidMethods`), con verificación de `iss`, para impedir tokens con `alg: none` o con otro algoritmo |
 | Secreto | `JWT_SECRET` de al menos 32 caracteres. Fuera de desarrollo, la API no arranca si es más corto |
