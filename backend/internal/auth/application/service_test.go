@@ -141,3 +141,52 @@ func TestRegisterPropagatesRepositoryErrors(t *testing.T) {
 		t.Fatal("esperaba error")
 	}
 }
+
+// ---- Login ----
+
+func registered(t *testing.T) env {
+	t.Helper()
+	e := newEnv()
+	_, err := e.svc.Register(context.Background(), application.RegisterInput{
+		Email: "ana@mail.com", Password: "secreto123", DisplayName: "Ana",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return e
+}
+
+func TestLoginOK(t *testing.T) {
+	e := registered(t)
+	s, err := e.svc.Login(context.Background(), " ANA@mail.com ", "secreto123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.AccessToken == "" || s.RefreshToken == "" || len(e.refresh.hashes) != 2 {
+		t.Fatalf("sesión incompleta: %+v", s)
+	}
+}
+
+func TestLoginInvalidCredentials(t *testing.T) {
+	e := registered(t)
+	for _, c := range []struct{ email, pass string }{
+		{"ana@mail.com", "incorrecta"},
+		{"nadie@mail.com", "secreto123"},
+	} {
+		_, err := e.svc.Login(context.Background(), c.email, c.pass)
+		var ae *errs.Error
+		if !errors.As(err, &ae) || ae.Code != "INVALID_CREDENTIALS" {
+			t.Errorf("Login(%s) err = %v; want INVALID_CREDENTIALS", c.email, err)
+		}
+	}
+}
+
+func TestLoginBlockedUser(t *testing.T) {
+	e := registered(t)
+	u := e.users.byMail["ana@mail.com"]
+	u.Status = domain.StatusBlocked
+	e.users.byMail["ana@mail.com"] = u
+	if _, err := e.svc.Login(context.Background(), "ana@mail.com", "secreto123"); !errors.Is(err, errs.ErrForbidden) {
+		t.Fatalf("err = %v; want ErrForbidden", err)
+	}
+}
