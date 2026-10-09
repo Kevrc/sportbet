@@ -1,0 +1,85 @@
+<header class="head">
+  <div>
+    <h1>Billetera</h1>
+    <p class="subtitle">Saldo virtual: no se maneja dinero real.</p>
+  </div>
+  <button type="button" class="secondary" (click)="load(page())" [disabled]="loading()">
+    Recargar
+  </button>
+</header>
+
+<section class="balance" aria-label="Saldo disponible">
+  <span class="balance-label">Saldo disponible</span>
+  @let b = balance();
+  @if (b === null) {
+    <strong class="balance-value muted">—</strong>
+  } @else {
+    <strong class="balance-value">{{ money(b) }}</strong>
+  }
+</section>
+
+@if (error(); as msg) {
+  <p class="alert" role="alert">
+    {{ msg }}
+    <button type="button" class="secondary" (click)="load(page())">Reintentar</button>
+  </p>
+}
+
+<h2>Movimientos</h2>
+<div class="table-wrap" [attr.aria-busy]="loading()">
+  <table>
+    <caption class="visually-hidden">
+      Movimientos de la billetera
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Fecha</th>
+        <th scope="col">Tipo</th>
+        <th scope="col">Referencia</th>
+        <th scope="col" class="num">Monto</th>
+        <th scope="col" class="num">Saldo</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (t of txs(); track t.id) {
+        <tr>
+          <td>{{ t.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+          <td>{{ label(t.type) }}</td>
+          <td class="muted">{{ t.reference }}</td>
+          <td class="num" [class.plus]="t.amountCents > 0" [class.minus]="t.amountCents < 0">
+            {{ signed(t.amountCents) }}
+          </td>
+          <td class="num">{{ money(t.balanceAfterCents) }}</td>
+        </tr>
+      } @empty {
+        @if (!loading() && !error()) {
+          <tr>
+            <td colspan="5" class="muted">Todavía no tienes movimientos.</td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (totalPages() > 1) {
+  <nav class="pager" aria-label="Paginación">
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="page() <= 1 || loading()"
+      (click)="load(page() - 1)"
+    >
+      Anterior
+    </button>
+    <span>Página {{ page() }} de {{ totalPages() }}</span>
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="page() >= totalPages() || loading()"
+      (click)="load(page() + 1)"
+    >
+      Siguiente
+    </button>
+  </nav>
+}
