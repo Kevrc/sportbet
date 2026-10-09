@@ -1,0 +1,114 @@
+<header class="head">
+  <div>
+    <h1>Administración</h1>
+    <p class="subtitle">Usuarios registrados: {{ total() }}</p>
+  </div>
+  <button type="button" class="secondary" (click)="load(page())" [disabled]="loading()">
+    Recargar
+  </button>
+</header>
+
+@if (error(); as msg) {
+  <p class="alert" role="alert">{{ msg }}</p>
+}
+
+<div class="table-wrap" [attr.aria-busy]="loading()">
+  <table>
+    <caption class="visually-hidden">
+      Usuarios
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Nombre</th>
+        <th scope="col">Email</th>
+        <th scope="col">Rol</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Alta</th>
+        <th scope="col"><span class="visually-hidden">Acciones</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (u of users(); track u.id) {
+        <tr [class.blocked]="u.status === 'blocked'">
+          <td>
+            {{ u.displayName }}
+            @if (isSelf(u)) {
+              <span class="you">(tú)</span>
+            }
+          </td>
+          <td class="email">{{ u.email }}</td>
+          <td>
+            <span class="badge" [class.admin]="u.role === 'admin'">
+              {{ u.role === 'admin' ? 'Admin' : 'Usuario' }}
+            </span>
+          </td>
+          <td>
+            <span class="badge" [class.danger]="u.status === 'blocked'">
+              {{ u.status === 'blocked' ? 'Bloqueado' : 'Activo' }}
+            </span>
+          </td>
+          <td>{{ u.createdAt | date: 'dd/MM/yyyy' }}</td>
+          <td class="actions-cell">
+            <div class="actions">
+              @if (isSelf(u)) {
+                <span class="muted">—</span>
+              } @else {
+                <button
+                  type="button"
+                  class="secondary"
+                  [disabled]="pendingId() === u.id"
+                  (click)="toggleRole(u)"
+                  [attr.aria-label]="
+                    (u.role === 'admin' ? 'Quitar admin a ' : 'Hacer admin a ') + u.displayName
+                  "
+                >
+                  {{ u.role === 'admin' ? 'Quitar admin' : 'Hacer admin' }}
+                </button>
+                <button
+                  type="button"
+                  [class.danger]="u.status === 'active'"
+                  [class.secondary]="u.status === 'blocked'"
+                  [disabled]="pendingId() === u.id"
+                  (click)="toggleStatus(u)"
+                  [attr.aria-label]="
+                    (u.status === 'active' ? 'Bloquear a ' : 'Desbloquear a ') + u.displayName
+                  "
+                >
+                  {{ u.status === 'active' ? 'Bloquear' : 'Desbloquear' }}
+                </button>
+              }
+            </div>
+          </td>
+        </tr>
+      } @empty {
+        @if (!loading()) {
+          <tr>
+            <td colspan="6" class="muted">No hay usuarios.</td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (totalPages() > 1) {
+  <nav class="pager" aria-label="Paginación">
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="page() <= 1 || loading()"
+      (click)="load(page() - 1)"
+    >
+      Anterior
+    </button>
+    <span>Página {{ page() }} de {{ totalPages() }}</span>
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="page() >= totalPages() || loading()"
+      (click)="load(page() + 1)"
+    >
+      Siguiente
+    </button>
+  </nav>
+}

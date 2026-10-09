@@ -1,8 +1,13 @@
 // Rutas del feature admin. Dueño: Persona 1.
 import { Routes } from '@angular/router';
 
-import { AdminDashboardPage } from './pages/admin-dashboard.page';
+import { AdminUsersPage } from './pages/admin-users.page';
 
 export default [
-  { path: '', pathMatch: 'full', component: AdminDashboardPage, title: 'Panel de administración · SportBet' },
+  {
+    path: '',
+    pathMatch: 'full',
+    component: AdminUsersPage,
+    title: 'Administración · SportBet',
+  },
 ] satisfies Routes;
