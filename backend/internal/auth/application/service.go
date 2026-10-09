@@ -154,6 +154,35 @@ func (s *Service) Logout(ctx context.Context, refreshPlain string) error {
 	})
 }
 
+// EnsureAdmin crea el usuario admin inicial con su billetera si el email no
+// existe. Si ya existe no lo modifica (ni le sube el rol): devuelve created=false.
+func (s *Service) EnsureAdmin(ctx context.Context, email, password string) (created bool, err error) {
+	u, err := domain.NewUser(email, "Administrador", password)
+	if err != nil {
+		return false, err
+	}
+	if _, err := s.users.FindByEmail(ctx, u.Email); err == nil {
+		return false, nil
+	} else if !errors.Is(err, errs.ErrNotFound) {
+		return false, err
+	}
+	u.Role = contracts.RoleAdmin
+	if u.PasswordHash, err = domain.HashPassword(password); err != nil {
+		return false, err
+	}
+	err = s.tx(ctx, func(q db.Querier) error {
+		created, err := s.users.Create(ctx, q, u)
+		if err != nil {
+			return err
+		}
+		return s.wallet.CreateWallet(ctx, q, created.ID, s.cfg.InitialBalance)
+	})
+	if errors.Is(err, errs.ErrConflict) {
+		return false, nil // otra instancia lo creó al mismo tiempo
+	}
+	return err == nil, err
+}
+
 func (s *Service) session(u domain.User, refreshPlain string, refreshExp time.Time) (Session, error) {
 	access, accessExp, err := s.tokens.Issue(u.CurrentUser())
 	if err != nil {
