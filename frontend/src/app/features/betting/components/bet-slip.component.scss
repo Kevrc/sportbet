@@ -1,0 +1,284 @@
+:host {
+  display: block;
+}
+
+.slip {
+  padding: 0.85rem 1rem;
+  background: #fff;
+  border: 1px solid #e3e3e8;
+  border-radius: 12px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+}
+
+.count {
+  display: inline-block;
+  min-width: 1.4rem;
+  margin-left: 0.25rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.empty,
+.hint,
+.kind {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5b5b66;
+}
+
+.kind {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.notice,
+.confirm {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: #fffaeb;
+  color: #93370d;
+  font-size: 0.85rem;
+
+  p {
+    margin: 0 0 0.4rem;
+  }
+}
+
+.error {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #912018;
+  font-size: 0.85rem;
+
+  p {
+    margin: 0;
+  }
+
+  ul {
+    margin: 0.35rem 0 0;
+    padding-left: 1.1rem;
+  }
+}
+
+.success {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: #ecfdf3;
+  color: #054f31;
+  font-size: 0.9rem;
+
+  dl {
+    margin: 0.4rem 0;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    a {
+      color: #054f31;
+      font-weight: 600;
+    }
+  }
+}
+
+dl {
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.15rem 0;
+  }
+
+  dt {
+    color: inherit;
+    opacity: 0.8;
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.selections {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-top: 1px solid #ededf1;
+  }
+
+  li.changed {
+    background: #fffaeb;
+  }
+
+  li.closed {
+    opacity: 0.7;
+  }
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.85rem;
+
+  .event {
+    font-weight: 600;
+  }
+
+  .market {
+    color: #5b5b66;
+  }
+
+  .pick {
+    font-weight: 600;
+    color: #1d4ed8;
+  }
+
+  .flag {
+    color: #93370d;
+    font-weight: 600;
+  }
+}
+
+.odd-col {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+
+  .old {
+    color: #8a8a94;
+  }
+}
+
+.remove {
+  padding: 0 0.3rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #5b5b66;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+
+  &:hover {
+    color: #b42318;
+  }
+}
+
+.stake {
+  margin-bottom: 0.75rem;
+
+  label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #5b5b66;
+  }
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid #c9c9d1;
+    border-radius: 8px;
+
+    &[aria-invalid='true'] {
+      border-color: #b42318;
+    }
+  }
+
+  .hint {
+    margin-top: 0.25rem;
+  }
+}
+
+.field-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #b42318;
+}
+
+.summary {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid #ededf1;
+}
+
+button {
+  font: inherit;
+
+  &:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 1px;
+  }
+
+  &.primary {
+    width: 100%;
+    padding: 0.65rem;
+    font-weight: 700;
+    color: #fff;
+    background: #1d4ed8;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &.secondary {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #fff;
+    border: 1px solid #c9c9d1;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  &.link {
+    padding: 0;
+    font-size: 0.85rem;
+    color: #1d4ed8;
+    background: none;
+    border: 0;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}

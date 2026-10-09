@@ -1,10 +1,15 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { EventDetail } from '../../../core/api/models';
 import { ApiError } from '../../../core/http/error.interceptor';
+import { AuthStore } from '../../../core/auth/auth.store';
 import { LiveEventsService } from '../../../core/live/live-events.service';
+import { BetSlipStore } from '../../betting/public-api';
+import { BettingService } from '../../betting/betting.service';
+import { WalletStore } from '../../wallet/public-api';
 import { detail, fakeLive, market } from '../events-testing';
 import { EventsService } from '../events.service';
 import { EventDetailPage } from './event-detail.page';
@@ -22,11 +27,20 @@ function setup(get: (id: string) => Observable<EventDetail>, id = 'e1') {
       provideRouter([]),
       { provide: EventsService, useValue: service },
       { provide: LiveEventsService, useValue: live },
+      { provide: BettingService, useValue: { placeBet: () => of(), eventMarkets: () => of([]) } },
+      { provide: WalletStore, useValue: { balanceCents: signal(null), refresh: () => undefined } },
+      { provide: AuthStore, useValue: { isAuthenticated: signal(true) } },
     ],
   });
   const fixture = TestBed.createComponent(EventDetailPage);
   fixture.componentRef.setInput('id', id);
-  return { fixture, calls, live, el: fixture.nativeElement as HTMLElement };
+  return {
+    fixture,
+    calls,
+    live,
+    slip: TestBed.inject(BetSlipStore),
+    el: fixture.nativeElement as HTMLElement,
+  };
 }
 
 async function settle(fixture: { whenStable(): Promise<unknown>; detectChanges(): void }) {
@@ -175,6 +189,62 @@ describe('EventDetailPage', () => {
       live.reconnect();
       await settle(fixture);
       expect(calls).toEqual(['e1', 'e1']);
+    });
+  });
+
+  describe('boleto', () => {
+    it('tocar una cuota la añade al boleto y la marca; tocarla otra vez la quita', async () => {
+      const { fixture, el, slip } = setup(() => of(detail({ startAt: farFuture })));
+      await settle(fixture);
+
+      selections(el)[0].click();
+      await settle(fixture);
+      expect(slip.selections()).toMatchObject([
+        {
+          selectionId: 's1',
+          eventId: 'e1',
+          eventName: 'Local e1 - Visita e1',
+          marketId: 'm1',
+          marketLabel: 'Resultado final (1X2)',
+          label: 'Local',
+          oddX100: 214,
+        },
+      ]);
+      expect(selections(el)[0].getAttribute('aria-pressed')).toBe('true');
+      expect(selections(el)[1].getAttribute('aria-pressed')).toBe('false');
+      expect(el.querySelector('app-bet-slip')!.textContent).toContain('Local e1 - Visita e1');
+      expect(el.querySelector('app-bet-slip')!.textContent).toContain('2.14');
+
+      selections(el)[0].click();
+      await settle(fixture);
+      expect(slip.count()).toBe(0);
+      expect(selections(el)[0].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('otra opción del mismo mercado reemplaza a la anterior', async () => {
+      const { fixture, el, slip } = setup(() => of(detail({ startAt: farFuture })));
+      await settle(fixture);
+      selections(el)[0].click();
+      selections(el)[1].click();
+      await settle(fixture);
+      expect(slip.selections().map((s) => s.selectionId)).toEqual(['s2']);
+    });
+
+    it('otro mercado del mismo partido no se añade y se avisa', async () => {
+      const second = market({
+        id: 'm2',
+        code: 'BOTH_TEAMS_TO_SCORE',
+        selections: [{ id: 's9', code: 'YES', label: 'Sí', oddX100: 180, result: 'PENDING' }],
+      });
+      const { fixture, el, slip } = setup(() =>
+        of(detail({ startAt: farFuture, markets: [market(), second] })),
+      );
+      await settle(fixture);
+      selections(el)[0].click();
+      selections(el)[3].click();
+      await settle(fixture);
+      expect(slip.count()).toBe(1);
+      expect(el.querySelector('app-bet-slip .notice')!.textContent).toContain('mismo partido');
     });
   });
 });

@@ -14,6 +14,7 @@ const pick = (n: number, extra: Partial<SlipPick> = {}): SlipPick => ({
   eventName: `Local ${n} - Visita ${n}`,
   marketId: `m${n}`,
   marketCode: 'MATCH_RESULT',
+  marketLabel: 'Resultado final (1X2)',
   label: 'Local',
   oddX100: 200,
   ...extra,
@@ -125,6 +126,18 @@ describe('BetSlipStore · selecciones', () => {
     store.setStake('10');
     store.clear();
     expect([store.count(), store.stakeText()]).toEqual([0, '']);
+  });
+});
+
+describe('BetSlipStore · resultado', () => {
+  it('dismissResult quita el mensaje de resultado', () => {
+    const { store } = setup();
+    store.toggle(pick(1));
+    store.setStake('10');
+    store.place();
+    expect(store.result()).not.toBeNull();
+    store.dismissResult();
+    expect(store.result()).toBeNull();
   });
 });
 

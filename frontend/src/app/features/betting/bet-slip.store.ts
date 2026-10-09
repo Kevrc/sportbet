@@ -22,6 +22,8 @@ export interface SlipPick {
   eventName: string;
   marketId: string;
   marketCode: MarketCode;
+  /** Nombre legible del mercado, p. ej. "Resultado final (1X2)". */
+  marketLabel: string;
   label: string;
   oddX100: number;
 }
@@ -160,6 +162,10 @@ export class BetSlipStore {
         s.status === 'changed' ? { ...s, status: 'ok', previousOddX100: undefined } : s,
       ),
     );
+  }
+
+  dismissResult(): void {
+    this._result.set(null);
   }
 
   dismissNotice(): void {

@@ -17,60 +17,70 @@
   <p class="muted empty">Este evento no existe o ya no está disponible.</p>
 }
 
-@if (view(); as e) {
-  <header class="hero">
-    <p class="league">{{ e.league.name }} · {{ e.league.country }}</p>
-    <div class="match">
-      <span class="team">{{ e.home.name }}</span>
-      <span class="center">
-        @if (score(); as s) {
-          <strong class="score">{{ s }}</strong>
-        } @else {
-          <strong class="vs">vs</strong>
-        }
-      </span>
-      <span class="team">{{ e.away.name }}</span>
-    </div>
-    <p class="meta">
-      {{ e.startAt | date: 'EEEE d MMMM, HH:mm' }} ·
-      <span class="badge" [class.live]="e.status === 'LIVE'">
-        {{ statusText(e.status) }}
-        @if (e.status === 'LIVE' && e.minute != null) {
-          {{ e.minute }}'
-        }
-      </span>
-      @if (live.isStale(e)) {
-        <span class="stale">· Desactualizado</span>
-      }
-    </p>
-  </header>
+<div class="layout">
+  <div class="main">
+    @if (view(); as e) {
+      <header class="hero">
+        <p class="league">{{ e.league.name }} · {{ e.league.country }}</p>
+        <div class="match">
+          <span class="team">{{ e.home.name }}</span>
+          <span class="center">
+            @if (score(); as s) {
+              <strong class="score">{{ s }}</strong>
+            } @else {
+              <strong class="vs">vs</strong>
+            }
+          </span>
+          <span class="team">{{ e.away.name }}</span>
+        </div>
+        <p class="meta">
+          {{ e.startAt | date: 'EEEE d MMMM, HH:mm' }} ·
+          <span class="badge" [class.live]="e.status === 'LIVE'">
+            {{ statusText(e.status) }}
+            @if (e.status === 'LIVE' && e.minute != null) {
+              {{ e.minute }}'
+            }
+          </span>
+          @if (live.isStale(e)) {
+            <span class="stale">· Desactualizado</span>
+          }
+        </p>
+      </header>
 
-  @for (m of e.markets; track m.id) {
-    @let reason = lockReason(m);
-    <section class="market" [attr.aria-labelledby]="'m-' + m.id">
-      <h2 [id]="'m-' + m.id">{{ title(m.code) }}</h2>
-      @if (reason) {
-        <p class="lock">{{ reason }}</p>
+      @for (m of e.markets; track m.id) {
+        @let reason = lockReason(m);
+        <section class="market" [attr.aria-labelledby]="'m-' + m.id">
+          <h2 [id]="'m-' + m.id">{{ title(m.code) }}</h2>
+          @if (reason) {
+            <p class="lock">{{ reason }}</p>
+          }
+          <div class="selections">
+            @for (s of m.selections; track s.id) {
+              <button
+                type="button"
+                class="selection"
+                [class.won]="s.result === 'WON'"
+                [class.lost]="s.result === 'LOST'"
+                [class.selected]="slip.selectedIds().has(s.id)"
+                [attr.aria-pressed]="slip.selectedIds().has(s.id)"
+                [disabled]="!!reason"
+                (click)="pick(e, m, s)"
+                [attr.aria-label]="s.label + ', cuota ' + odd(s.oddX100)"
+              >
+                <span class="label">{{ s.label }}</span>
+                <span class="odd">{{ odd(s.oddX100) }}</span>
+              </button>
+            }
+          </div>
+        </section>
+      } @empty {
+        <p class="muted empty">Este evento todavía no tiene mercados.</p>
       }
-      <div class="selections">
-        @for (s of m.selections; track s.id) {
-          <button
-            type="button"
-            class="selection"
-            [class.won]="s.result === 'WON'"
-            [class.lost]="s.result === 'LOST'"
-            [disabled]="!!reason"
-            [attr.aria-label]="s.label + ', cuota ' + odd(s.oddX100)"
-          >
-            <span class="label">{{ s.label }}</span>
-            <span class="odd">{{ odd(s.oddX100) }}</span>
-          </button>
-        }
-      </div>
-    </section>
-  } @empty {
-    <p class="muted empty">Este evento todavía no tiene mercados.</p>
-  }
-} @else if (loading()) {
-  <p class="muted empty" role="status">Cargando evento…</p>
-}
+    } @else if (loading()) {
+      <p class="muted empty" role="status">Cargando evento…</p>
+    }
+  </div>
+  <aside class="side">
+    <app-bet-slip />
+  </aside>
+</div>

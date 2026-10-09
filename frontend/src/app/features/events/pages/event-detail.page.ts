@@ -5,16 +5,16 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, of, switchMap, tap } from 'rxjs';
 
-import { EventDetail, Market } from '../../../core/api/models';
+import { EventDetail, Market, Selection } from '../../../core/api/models';
 import { ApiError } from '../../../core/http/error.interceptor';
-import { formatOdd } from '../../betting/public-api';
+import { BetSlipComponent, BetSlipStore, formatOdd } from '../../betting/public-api';
 import { marketLockReason, marketTitle, scoreText, statusLabel } from '../events-format';
 import { EventsService } from '../events.service';
 import { LiveScoresStore } from '../live-scores.store';
 
 @Component({
   selector: 'app-event-detail-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, BetSlipComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './event-detail.page.html',
   styleUrl: './event-detail.page.scss',
@@ -23,6 +23,7 @@ import { LiveScoresStore } from '../live-scores.store';
 export class EventDetailPage {
   private readonly service = inject(EventsService);
   protected readonly live = inject(LiveScoresStore);
+  protected readonly slip = inject(BetSlipStore);
 
   /** Parámetro :id de la ruta (withComponentInputBinding). */
   readonly id = input.required<string>();
@@ -74,6 +75,20 @@ export class EventDetailPage {
         this.event.set(e);
         this.loading.set(false);
       });
+  }
+
+  /** Añade o quita la selección del boleto. */
+  protected pick(e: EventDetail, m: Market, s: Selection): void {
+    this.slip.toggle({
+      selectionId: s.id,
+      eventId: e.id,
+      eventName: `${e.home.name} - ${e.away.name}`,
+      marketId: m.id,
+      marketCode: m.code,
+      marketLabel: marketTitle(m.code),
+      label: s.label,
+      oddX100: s.oddX100,
+    });
   }
 
   protected retry(): void {
