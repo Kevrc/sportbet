@@ -4,20 +4,29 @@ import { Observable, of, throwError } from 'rxjs';
 
 import { EventDetail } from '../../../core/api/models';
 import { ApiError } from '../../../core/http/error.interceptor';
-import { detail, market } from '../events-testing';
+import { LiveEventsService } from '../../../core/live/live-events.service';
+import { detail, fakeLive, market } from '../events-testing';
 import { EventsService } from '../events.service';
 import { EventDetailPage } from './event-detail.page';
 
 function setup(get: (id: string) => Observable<EventDetail>, id = 'e1') {
   const calls: string[] = [];
-  const service = { get: (i: string) => (calls.push(i), get(i)) };
+  const live = fakeLive();
+  const service = {
+    get: (i: string) => (calls.push(i), get(i)),
+    live: () => of([] as EventDetail[]),
+  };
   TestBed.configureTestingModule({
     imports: [EventDetailPage],
-    providers: [provideRouter([]), { provide: EventsService, useValue: service }],
+    providers: [
+      provideRouter([]),
+      { provide: EventsService, useValue: service },
+      { provide: LiveEventsService, useValue: live },
+    ],
   });
   const fixture = TestBed.createComponent(EventDetailPage);
   fixture.componentRef.setInput('id', id);
-  return { fixture, calls, el: fixture.nativeElement as HTMLElement };
+  return { fixture, calls, live, el: fixture.nativeElement as HTMLElement };
 }
 
 async function settle(fixture: { whenStable(): Promise<unknown>; detectChanges(): void }) {
@@ -116,5 +125,56 @@ describe('EventDetailPage', () => {
     fixture.componentRef.setInput('id', 'e2');
     await settle(fixture);
     expect(calls).toEqual(['e1', 'e2']);
+  });
+
+  describe('en vivo', () => {
+    it('al empezar el partido cierra los mercados y muestra el estado en vivo', async () => {
+      const { fixture, el, live } = setup(() => of(detail({ startAt: farFuture })));
+      await settle(fixture);
+      expect(selections(el).every((b) => !b.disabled)).toBe(true);
+
+      live.emit.started({ eventId: 'e1', startedAt: '2026-10-12T18:00:00Z' });
+      await settle(fixture);
+      expect(selections(el).every((b) => b.disabled)).toBe(true);
+      expect(el.textContent).toContain('En vivo');
+      expect(el.querySelector('.score')!.textContent).toContain('0 - 0');
+    });
+
+    it('actualiza marcador y minuto con match.updated', async () => {
+      const { fixture, el, live } = setup(() => of(detail({ startAt: farFuture })));
+      await settle(fixture);
+      live.emit.updated({
+        eventId: 'e1',
+        status: 'LIVE',
+        homeScore: 2,
+        awayScore: 1,
+        minute: 63,
+        updatedAt: '2026-10-12T19:03:00Z',
+      });
+      await settle(fixture);
+      expect(el.querySelector('.score')!.textContent).toContain('2 - 1');
+      expect(el.textContent).toContain("63'");
+    });
+
+    it('marca "Desactualizado" si el dato en vivo tiene más de 5 minutos', async () => {
+      const old = new Date(Date.now() - 10 * 60_000).toISOString();
+      const { fixture, el } = setup(() =>
+        of(detail({ status: 'LIVE', minute: 70, homeScore: 0, awayScore: 0, liveUpdatedAt: old })),
+      );
+      await settle(fixture);
+      expect(el.querySelector('.stale')!.textContent).toContain('Desactualizado');
+    });
+
+    it('avisa si no hay conexión y, al reconectar, vuelve a pedir el evento', async () => {
+      const { fixture, el, live, calls } = setup(() => of(detail({ startAt: farFuture })));
+      await settle(fixture);
+      live.connected.set(false);
+      await settle(fixture);
+      expect(el.querySelector('.offline')).not.toBeNull();
+
+      live.reconnect();
+      await settle(fixture);
+      expect(calls).toEqual(['e1', 'e1']);
+    });
   });
 });

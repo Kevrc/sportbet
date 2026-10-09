@@ -27,6 +27,11 @@ export class EventsService {
     });
   }
 
+  /** Partidos en juego ahora mismo: se pide al conectar y al reconectar el SSE. */
+  live(): Observable<SportEvent[]> {
+    return this.api.get<SportEvent[]>('/events/live');
+  }
+
   leagues(): Observable<League[]> {
     return this.api.get<League[]>('/leagues');
   }

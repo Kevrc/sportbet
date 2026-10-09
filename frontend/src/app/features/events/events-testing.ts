@@ -1,4 +1,41 @@
-import { EventDetail, Market, SportEvent } from '../../core/api/models';
+import { signal } from '@angular/core';
+import { Subject } from 'rxjs';
+
+import {
+  EventDetail,
+  LiveMessages,
+  Market,
+  MatchFinishedMessage,
+  MatchStartedMessage,
+  MatchUpdatedMessage,
+  SportEvent,
+} from '../../core/api/models';
+
+/** LiveEventsService falso: las pruebas emiten los mensajes SSE a mano (jsdom no tiene EventSource). */
+export function fakeLive() {
+  const updated = new Subject<MatchUpdatedMessage>();
+  const started = new Subject<MatchStartedMessage>();
+  const finished = new Subject<MatchFinishedMessage>();
+  const reconnected = new Subject<void>();
+  const streams = {
+    'match.updated': updated,
+    'match.started': started,
+    'match.finished': finished,
+  };
+  return {
+    connected: signal(true),
+    reconnected$: reconnected.asObservable(),
+    on: <T extends keyof LiveMessages>(type: T) => streams[type].asObservable(),
+    isStale: (iso: string | null | undefined, now = Date.now()) =>
+      !iso || now - Date.parse(iso) > 5 * 60 * 1000,
+    emit: {
+      updated: (m: MatchUpdatedMessage) => updated.next(m),
+      started: (m: MatchStartedMessage) => started.next(m),
+      finished: (m: MatchFinishedMessage) => finished.next(m),
+    },
+    reconnect: () => reconnected.next(),
+  };
+}
 
 // Datos de prueba compartidos por las pruebas del feature.
 export const league = (id = 'l1', extra: Partial<SportEvent['league']> = {}) => ({

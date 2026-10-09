@@ -3,7 +3,8 @@ import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { League, SportEvent } from '../../../core/api/models';
-import { event, league } from '../events-testing';
+import { LiveEventsService } from '../../../core/live/live-events.service';
+import { event, fakeLive, league } from '../events-testing';
 import { EventFilters, EventsService } from '../events.service';
 import { EventListPage } from './event-list.page';
 
@@ -12,7 +13,10 @@ function setup(opts: {
   leagues?: Observable<League[]>;
 }) {
   const calls: EventFilters[] = [];
+  const live = fakeLive();
+  const liveCalls = { n: 0 };
   const service = {
+    live: () => (liveCalls.n++, of([] as SportEvent[])),
     list: (f: EventFilters) => {
       calls.push(f);
       return (opts.list ?? (() => of([])))(f);
@@ -21,10 +25,14 @@ function setup(opts: {
   };
   TestBed.configureTestingModule({
     imports: [EventListPage],
-    providers: [provideRouter([]), { provide: EventsService, useValue: service }],
+    providers: [
+      provideRouter([]),
+      { provide: EventsService, useValue: service },
+      { provide: LiveEventsService, useValue: live },
+    ],
   });
   const fixture = TestBed.createComponent(EventListPage);
-  return { fixture, calls, el: fixture.nativeElement as HTMLElement };
+  return { fixture, calls, live, liveCalls, el: fixture.nativeElement as HTMLElement };
 }
 
 async function settle(fixture: { whenStable(): Promise<unknown>; detectChanges(): void }) {
@@ -132,5 +140,95 @@ describe('EventListPage', () => {
     });
     await settle(fixture);
     expect(el.querySelectorAll('a.event')).toHaveLength(1);
+  });
+
+  describe('en vivo', () => {
+    const upd = (eventId: string, h: number, a: number, minute: number, at: string) => ({
+      eventId,
+      status: 'LIVE' as const,
+      homeScore: h,
+      awayScore: a,
+      minute,
+      updatedAt: at,
+    });
+    const row = (el: HTMLElement, text: string) =>
+      [...el.querySelectorAll<HTMLElement>('a.event')].find((a) => a.textContent!.includes(text))!;
+
+    it('el SSE actualiza estado, marcador y minuto sin recargar la lista', async () => {
+      const { fixture, el, live, calls } = setup({ list: () => of([event('e1')]) });
+      await settle(fixture);
+      expect(row(el, 'Local e1').textContent).toContain('Programado');
+
+      live.emit.started({ eventId: 'e1', startedAt: '2026-10-12T18:00:00Z' });
+      await settle(fixture);
+      expect(row(el, 'Local e1').textContent).toContain('En vivo');
+
+      live.emit.updated(upd('e1', 1, 0, 37, '2026-10-12T18:37:00Z'));
+      await settle(fixture);
+      expect(row(el, 'Local e1').textContent).toContain('1 - 0');
+      expect(row(el, 'Local e1').textContent).toContain("37'");
+
+      live.emit.finished({
+        eventId: 'e1',
+        status: 'FINISHED',
+        homeScore: 2,
+        awayScore: 1,
+        finishedAt: '2026-10-12T19:50:00Z',
+      });
+      await settle(fixture);
+      expect(row(el, 'Local e1').textContent).toContain('Finalizado');
+      expect(row(el, 'Local e1').textContent).toContain('2 - 1');
+      expect(calls).toHaveLength(1);
+    });
+
+    it('un mensaje de otro partido no cambia las filas visibles', async () => {
+      const { fixture, el, live } = setup({ list: () => of([event('e1')]) });
+      await settle(fixture);
+      live.emit.updated(upd('otro', 3, 3, 80, '2026-10-12T19:00:00Z'));
+      await settle(fixture);
+      expect(row(el, 'Local e1').textContent).toContain('Programado');
+      expect(row(el, 'Local e1').textContent).not.toContain('3 - 3');
+    });
+
+    it('marca "Desactualizado" un partido en vivo con dato de más de 5 minutos', async () => {
+      const old = new Date(Date.now() - 10 * 60_000).toISOString();
+      const fresh = new Date().toISOString();
+      const { fixture, el } = setup({
+        list: () =>
+          of([
+            event('viejo', { status: 'LIVE', minute: 50, liveUpdatedAt: old }),
+            event('nuevo', { status: 'LIVE', minute: 20, liveUpdatedAt: fresh }),
+            event('prog', { status: 'SCHEDULED' }),
+          ]),
+      });
+      await settle(fixture);
+      expect(row(el, 'Local viejo').textContent).toContain('Desactualizado');
+      expect(row(el, 'Local nuevo').textContent).not.toContain('Desactualizado');
+      expect(row(el, 'Local prog').textContent).not.toContain('Desactualizado');
+    });
+
+    it('avisa cuando se pierde la conexión en tiempo real', async () => {
+      const { fixture, el, live } = setup({});
+      await settle(fixture);
+      expect(el.querySelector('.offline')).toBeNull();
+
+      live.connected.set(false);
+      await settle(fixture);
+      expect(el.querySelector('.offline')!.textContent).toContain('Sin conexión en tiempo real');
+
+      live.connected.set(true);
+      await settle(fixture);
+      expect(el.querySelector('.offline')).toBeNull();
+    });
+
+    it('al reconectar vuelve a pedir /events/live y la lista', async () => {
+      const { fixture, live, calls, liveCalls } = setup({});
+      await settle(fixture);
+      expect([calls.length, liveCalls.n]).toEqual([1, 1]);
+
+      live.reconnect();
+      await settle(fixture);
+      expect([calls.length, liveCalls.n]).toEqual([2, 2]);
+    });
   });
 });

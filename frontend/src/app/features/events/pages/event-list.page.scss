@@ -75,6 +75,22 @@ h1 {
   color: #912018;
 }
 
+.offline {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #fffaeb;
+  color: #93370d;
+  font-size: 0.85rem;
+}
+
+.stale {
+  grid-column: 4;
+  justify-self: end;
+  font-size: 0.7rem;
+  color: #93370d;
+}
+
 .loading {
   opacity: 0.6;
 }

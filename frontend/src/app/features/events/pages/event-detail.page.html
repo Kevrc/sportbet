@@ -1,5 +1,11 @@
 <a class="back" routerLink="/events">← Volver a eventos</a>
 
+@if (!live.connected()) {
+  <p class="offline" role="status">
+    Sin conexión en tiempo real: el marcador y los mercados pueden estar desactualizados.
+  </p>
+}
+
 @if (error(); as msg) {
   <p class="alert" role="alert">
     {{ msg }}
@@ -11,7 +17,7 @@
   <p class="muted empty">Este evento no existe o ya no está disponible.</p>
 }
 
-@if (event(); as e) {
+@if (view(); as e) {
   <header class="hero">
     <p class="league">{{ e.league.name }} · {{ e.league.country }}</p>
     <div class="match">
@@ -33,6 +39,9 @@
           {{ e.minute }}'
         }
       </span>
+      @if (live.isStale(e)) {
+        <span class="stale">· Desactualizado</span>
+      }
     </p>
   </header>
 

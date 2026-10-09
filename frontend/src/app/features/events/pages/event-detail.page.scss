@@ -22,6 +22,19 @@
   text-align: center;
 }
 
+.offline {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #fffaeb;
+  color: #93370d;
+  font-size: 0.85rem;
+}
+
+.stale {
+  color: #93370d;
+}
+
 .alert {
   display: flex;
   align-items: center;

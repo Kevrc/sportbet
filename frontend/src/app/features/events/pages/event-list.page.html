@@ -8,6 +8,12 @@
   </button>
 </header>
 
+@if (!live.connected()) {
+  <p class="offline" role="status">
+    Sin conexión en tiempo real: los marcadores pueden estar desactualizados.
+  </p>
+}
+
 <form class="filters" (submit)="$event.preventDefault()" aria-label="Filtros de eventos">
   <label>
     Fecha
@@ -90,6 +96,9 @@
                   {{ e.minute }}'
                 }
               </span>
+              @if (live.isStale(e)) {
+                <span class="stale">Desactualizado</span>
+              }
             </a>
           </li>
         }

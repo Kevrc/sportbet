@@ -7,6 +7,7 @@ import { Subject, catchError, of, startWith, switchMap, tap } from 'rxjs';
 import { League, MatchStatus, SportEvent } from '../../../core/api/models';
 import { groupByLeague, scoreText, statusLabel } from '../events-format';
 import { EventFilters, EventsService } from '../events.service';
+import { LiveScoresStore } from '../live-scores.store';
 
 const STATUS_FILTERS: { value: MatchStatus; label: string }[] = [
   { value: 'SCHEDULED', label: 'Programados' },
@@ -20,9 +21,11 @@ const STATUS_FILTERS: { value: MatchStatus; label: string }[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './event-list.page.html',
   styleUrl: './event-list.page.scss',
+  providers: [LiveScoresStore],
 })
 export class EventListPage {
   private readonly service = inject(EventsService);
+  protected readonly live = inject(LiveScoresStore);
 
   protected readonly statusFilters = STATUS_FILTERS;
   protected readonly leagues = signal<League[]>([]);
@@ -31,7 +34,9 @@ export class EventListPage {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
-  protected readonly groups = computed(() => groupByLeague(this.events()));
+  protected readonly groups = computed(() =>
+    groupByLeague(this.events().map((e) => this.live.apply(e))),
+  );
   protected readonly hasFilters = computed(() => Object.values(this.filters()).some(Boolean));
 
   protected readonly statusText = statusLabel;
@@ -40,6 +45,9 @@ export class EventListPage {
   private readonly reload$ = new Subject<void>();
 
   constructor() {
+    // Tras reconectar el SSE se pudo perder algún mensaje: se vuelve a pedir la lista.
+    this.live.resynced$.pipe(takeUntilDestroyed()).subscribe(() => this.reload());
+
     this.service
       .leagues()
       .pipe(

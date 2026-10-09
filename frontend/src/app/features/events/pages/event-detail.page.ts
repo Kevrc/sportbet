@@ -10,6 +10,7 @@ import { ApiError } from '../../../core/http/error.interceptor';
 import { formatOdd } from '../../betting/public-api';
 import { marketLockReason, marketTitle, scoreText, statusLabel } from '../events-format';
 import { EventsService } from '../events.service';
+import { LiveScoresStore } from '../live-scores.store';
 
 @Component({
   selector: 'app-event-detail-page',
@@ -17,9 +18,11 @@ import { EventsService } from '../events.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './event-detail.page.html',
   styleUrl: './event-detail.page.scss',
+  providers: [LiveScoresStore],
 })
 export class EventDetailPage {
   private readonly service = inject(EventsService);
+  protected readonly live = inject(LiveScoresStore);
 
   /** Parámetro :id de la ruta (withComponentInputBinding). */
   readonly id = input.required<string>();
@@ -30,8 +33,14 @@ export class EventDetailPage {
   protected readonly notFound = signal(false);
   private readonly attempt = signal(0);
 
-  protected readonly score = computed(() => {
+  /** El evento cargado con el marcador y estado en vivo encima. */
+  protected readonly view = computed(() => {
     const e = this.event();
+    return e ? this.live.apply(e) : null;
+  });
+
+  protected readonly score = computed(() => {
+    const e = this.view();
     return e ? scoreText(e) : null;
   });
 
@@ -40,6 +49,9 @@ export class EventDetailPage {
   protected readonly odd = formatOdd;
 
   constructor() {
+    // Tras reconectar el SSE se pudo perder algún mensaje: se vuelve a pedir el evento.
+    this.live.resynced$.pipe(takeUntilDestroyed()).subscribe(() => this.retry());
+
     toObservable(computed(() => ({ id: this.id(), attempt: this.attempt() })))
       .pipe(
         tap(() => {
@@ -70,7 +82,7 @@ export class EventDetailPage {
 
   /** Motivo de bloqueo del mercado, calculado al renderizar. */
   protected lockReason(market: Market): string | null {
-    const e = this.event();
+    const e = this.view();
     return e ? marketLockReason(e, market) : 'Mercado cerrado';
   }
 }
