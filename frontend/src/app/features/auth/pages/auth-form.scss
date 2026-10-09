@@ -1,0 +1,102 @@
+// Estilos compartidos por login y registro.
+:host {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid #e3e3e8;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.subtitle {
+  margin: 0 0 1.5rem;
+  color: #5b5b66;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+input {
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  border: 1px solid #c9c9d1;
+  border-radius: 8px;
+  background: #fff;
+
+  &:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 1px;
+    border-color: #1d4ed8;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: #b42318;
+  }
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #5b5b66;
+}
+
+.field-error {
+  font-size: 0.8rem;
+  color: #b42318;
+}
+
+.form-error {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #912018;
+  font-size: 0.9rem;
+}
+
+button[type='submit'] {
+  width: 100%;
+  padding: 0.7rem;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: #1d4ed8;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: #1e40af;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+}
+
+.switch {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
