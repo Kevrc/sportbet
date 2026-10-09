@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"testing"
+	"time"
 
 	"sportbet/internal/shared/contracts"
 )
@@ -21,16 +22,18 @@ func (r *repositoryStub) GetEvent(context.Context, string) (Event, error) {
 func (r *repositoryStub) SetFeatured(context.Context, string, bool) (Event, error) {
 	return Event{}, nil
 }
-func (r *repositoryStub) ImportFixtures(context.Context, string, []contracts.ProviderFixture) error {
+func (r *repositoryStub) ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture) ([]Change, error) {
 	r.imported = true
-	return nil
+	return nil, nil
 }
-func (r *repositoryStub) ApplyLiveScores(context.Context, []contracts.LiveScore) error { return nil }
+func (r *repositoryStub) ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]Change, error) {
+	return nil, nil
+}
 
 func TestImportFixturesRejectsInvalidFixture(t *testing.T) {
 	repository := &repositoryStub{}
-	service := NewService(repository)
-	if err := service.ImportFixtures(context.Background(), "replay", []contracts.ProviderFixture{{}}); err == nil {
+	service := NewService(repository, nil)
+	if err := service.ImportFixtures(context.Background(), "replay", time.Now(), []contracts.ProviderFixture{{}}); err == nil {
 		t.Fatal("se aceptó un fixture incompleto")
 	}
 	if repository.imported {
@@ -39,7 +42,7 @@ func TestImportFixturesRejectsInvalidFixture(t *testing.T) {
 }
 
 func TestListEventsRejectsUnknownStatus(t *testing.T) {
-	service := NewService(&repositoryStub{})
+	service := NewService(&repositoryStub{}, nil)
 	if _, err := service.ListEvents(context.Background(), Filter{Status: "UNKNOWN"}); err == nil {
 		t.Fatal("se aceptó un estado desconocido")
 	}

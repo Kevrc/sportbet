@@ -1,0 +1,453 @@
+package infrastructure
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"sportbet/internal/events/application"
+	"sportbet/internal/events/domain"
+	"sportbet/internal/shared/contracts"
+	"sportbet/internal/shared/errs"
+)
+
+type Repository struct {
+	pool *pgxpool.Pool
+}
+
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{pool: pool}
+}
+
+func (r *Repository) ListLeagues(ctx context.Context) ([]application.League, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id::text, name, country, featured
+		FROM leagues ORDER BY featured DESC, name`)
+	if err != nil {
+		return nil, fmt.Errorf("events: listar ligas: %w", err)
+	}
+	defer rows.Close()
+	leagues := make([]application.League, 0)
+	for rows.Next() {
+		var league application.League
+		if err := rows.Scan(&league.ID, &league.Name, &league.Country, &league.Featured); err != nil {
+			return nil, fmt.Errorf("events: leer liga: %w", err)
+		}
+		leagues = append(leagues, league)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("events: recorrer ligas: %w", err)
+	}
+	return leagues, nil
+}
+
+func (r *Repository) ListEvents(ctx context.Context, filter application.Filter) ([]application.Event, error) {
+	var dateStart, dateEnd *time.Time
+	if filter.Date != nil {
+		start := time.Date(filter.Date.Year(), filter.Date.Month(), filter.Date.Day(), 0, 0, 0, 0, time.UTC)
+		end := start.AddDate(0, 0, 1)
+		dateStart, dateEnd = &start, &end
+	}
+	var status string
+	if filter.Status != "" {
+		status = string(filter.Status)
+	}
+	rows, err := r.pool.Query(ctx, eventSelect+`
+		WHERE ($1::timestamptz IS NULL OR e.start_at >= $1)
+		  AND ($2::timestamptz IS NULL OR e.start_at < $2)
+		  AND ($3::uuid IS NULL OR e.league_id = $3::uuid)
+		  AND ($4::text = '' OR e.status = $4)
+		  AND ($5::boolean IS NULL OR e.featured = $5)
+		  AND (NOT $6::boolean OR e.status IN ('LIVE', 'INTERRUPTED'))
+		ORDER BY e.start_at, e.id`,
+		dateStart, dateEnd, emptyAsNil(filter.LeagueID), status, filter.Featured, filter.LiveOnly)
+	if err != nil {
+		return nil, fmt.Errorf("events: listar eventos: %w", err)
+	}
+	defer rows.Close()
+	events := make([]application.Event, 0)
+	for rows.Next() {
+		event, err := scanEvent(rows)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("events: recorrer eventos: %w", err)
+	}
+	return events, nil
+}
+
+func (r *Repository) GetEvent(ctx context.Context, eventID string) (application.Event, error) {
+	event, err := scanEvent(r.pool.QueryRow(ctx, eventSelect+`WHERE e.id = $1::uuid`, eventID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return application.Event{}, errs.New(errs.ErrNotFound, "EVENT_NOT_FOUND", "evento no encontrado")
+	}
+	if err != nil {
+		return application.Event{}, fmt.Errorf("events: consultar evento: %w", err)
+	}
+	event.Markets, err = listEventMarkets(ctx, r.pool, eventID)
+	return event, err
+}
+
+func (r *Repository) SetFeatured(ctx context.Context, eventID string, featured bool) (application.Event, error) {
+	tag, err := r.pool.Exec(ctx, `UPDATE events SET featured = $2 WHERE id = $1::uuid`, eventID, featured)
+	if err != nil {
+		return application.Event{}, fmt.Errorf("events: actualizar evento destacado: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return application.Event{}, errs.New(errs.ErrNotFound, "EVENT_NOT_FOUND", "evento no encontrado")
+	}
+	return r.GetEvent(ctx, eventID)
+}
+
+func listEventMarkets(ctx context.Context, q interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}, eventID string) ([]application.Market, error) {
+	rows, err := q.Query(ctx, `
+		SELECT m.id::text, m.event_id::text, m.code, m.status,
+		       s.id::text, s.code, s.label, s.odd_x100, s.result
+		FROM markets m
+		LEFT JOIN selections s ON s.market_id = m.id
+		WHERE m.event_id = $1::uuid
+		ORDER BY m.code, s.id`, eventID)
+	if err != nil {
+		return nil, fmt.Errorf("events: consultar mercados del evento: %w", err)
+	}
+	defer rows.Close()
+	markets := make([]application.Market, 0)
+	positions := make(map[string]int)
+	for rows.Next() {
+		var marketID, eventKey, code, status string
+		var selectionID, selectionCode, label, result *string
+		var oddX100 *int32
+		if err := rows.Scan(&marketID, &eventKey, &code, &status, &selectionID, &selectionCode, &label, &oddX100, &result); err != nil {
+			return nil, fmt.Errorf("events: leer mercado del evento: %w", err)
+		}
+		position, ok := positions[marketID]
+		if !ok {
+			position = len(markets)
+			positions[marketID] = position
+			markets = append(markets, application.Market{
+				ID: marketID, EventID: eventKey, Code: code, Status: contracts.MarketStatus(status),
+				Selections: make([]application.Selection, 0),
+			})
+		}
+		if selectionID != nil {
+			markets[position].Selections = append(markets[position].Selections, application.Selection{
+				ID: *selectionID, Code: value(selectionCode), Label: value(label),
+				OddX100: int64(value(oddX100)), Result: contracts.SelectionOutcome(value(result)),
+			})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("events: recorrer mercados del evento: %w", err)
+	}
+	return markets, nil
+}
+
+func (r *Repository) ImportFixtures(ctx context.Context, provider string, now time.Time, fixtures []contracts.ProviderFixture) ([]application.Change, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("events: iniciar importación de fixtures: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	changes := make([]application.Change, 0)
+	for _, fixture := range fixtures {
+		leagueID, err := upsertLeague(ctx, tx, provider, fixture.League)
+		if err != nil {
+			return nil, err
+		}
+		homeID, err := upsertTeam(ctx, tx, provider, fixture.Home)
+		if err != nil {
+			return nil, err
+		}
+		awayID, err := upsertTeam(ctx, tx, provider, fixture.Away)
+		if err != nil {
+			return nil, err
+		}
+		change, err := r.upsertFixture(ctx, tx, provider, now, fixture, leagueID, homeID, awayID)
+		if err != nil {
+			return nil, err
+		}
+		if change != nil {
+			changes = append(changes, *change)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("events: confirmar importación de fixtures: %w", err)
+	}
+	return changes, nil
+}
+
+func (r *Repository) ApplyLiveScores(ctx context.Context, provider string, now time.Time, scores []contracts.LiveScore) ([]application.Change, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("events: iniciar actualización de marcadores: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	changes := make([]application.Change, 0, len(scores))
+	for _, score := range scores {
+		var eventID string
+		err := tx.QueryRow(ctx, `
+			SELECT e.id::text
+			FROM external_refs x JOIN events e ON e.id = x.entity_id
+			WHERE x.provider = $1 AND x.entity_type = 'event' AND x.external_id = $2`, provider, score.ExternalID).
+			Scan(&eventID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errs.New(errs.ErrNotFound, "EVENT_NOT_IMPORTED", "marcador recibido para un evento no importado")
+		}
+		if err != nil {
+			return nil, fmt.Errorf("events: localizar evento del marcador: %w", err)
+		}
+		var previous contracts.MatchStatus
+		var liveUpdatedAt *time.Time
+		if err := tx.QueryRow(ctx, `SELECT status, live_updated_at FROM events WHERE id = $1::uuid FOR UPDATE`, eventID).
+			Scan(&previous, &liveUpdatedAt); err != nil {
+			return nil, fmt.Errorf("events: leer estado antes del marcador: %w", err)
+		}
+		observedAt := score.ObservedAt
+		if observedAt.IsZero() {
+			observedAt = now
+		}
+		if liveUpdatedAt != nil && observedAt.Before(*liveUpdatedAt) {
+			continue
+		}
+		if !domain.CanTransition(previous, score.Status, false) {
+			continue
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE events SET status = $2, home_score = $3, away_score = $4,
+			                   minute = $5, live_updated_at = $6,
+			                   kicked_off_at = COALESCE(kicked_off_at, $6)
+			WHERE id = $1::uuid`, eventID, score.Status, score.HomeScore, score.AwayScore, score.Minute, observedAt)
+		if err != nil {
+			return nil, fmt.Errorf("events: guardar marcador en vivo: %w", err)
+		}
+		event, err := scanEvent(tx.QueryRow(ctx, eventSelect+`WHERE e.id = $1::uuid`, eventID))
+		if err != nil {
+			return nil, fmt.Errorf("events: leer evento actualizado: %w", err)
+		}
+		changes = append(changes, application.Change{
+			Event: event, PreviousStatus: previous,
+			Started:   previous != contracts.MatchLive && previous != contracts.MatchInterrupted,
+			UpdatedAt: observedAt,
+		})
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("events: confirmar marcadores en vivo: %w", err)
+	}
+	return changes, nil
+}
+
+func (r *Repository) upsertFixture(
+	ctx context.Context,
+	tx pgx.Tx,
+	provider string,
+	now time.Time,
+	fixture contracts.ProviderFixture,
+	leagueID, homeID, awayID string,
+) (*application.Change, error) {
+	if err := lockExternal(ctx, tx, provider, "event", fixture.ExternalID); err != nil {
+		return nil, err
+	}
+	var eventID string
+	err := tx.QueryRow(ctx, `
+		SELECT entity_id::text FROM external_refs
+		WHERE provider = $1 AND entity_type = 'event' AND external_id = $2`, provider, fixture.ExternalID).Scan(&eventID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		var homeScore, awayScore *int
+		homeScore, awayScore = fixture.HomeScore, fixture.AwayScore
+		var startedAt, finishedAt *time.Time
+		if fixture.Status == contracts.MatchLive || fixture.Status == contracts.MatchInterrupted {
+			startedAt = &now
+		}
+		if fixture.Status.IsTerminal() {
+			finishedAt = &now
+		}
+		err = tx.QueryRow(ctx, `
+			INSERT INTO events (league_id, home_team_id, away_team_id, start_at, status,
+			                    home_score, away_score, kicked_off_at, finished_at)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9)
+			RETURNING id::text`, leagueID, homeID, awayID, fixture.StartAt, fixture.Status,
+			homeScore, awayScore, startedAt, finishedAt).Scan(&eventID)
+		if err != nil {
+			return nil, fmt.Errorf("events: insertar evento: %w", err)
+		}
+		if err := insertExternalRef(ctx, tx, provider, "event", eventID, fixture.ExternalID); err != nil {
+			return nil, err
+		}
+		event, err := scanEvent(tx.QueryRow(ctx, eventSelect+`WHERE e.id = $1::uuid`, eventID))
+		if err != nil {
+			return nil, fmt.Errorf("events: leer evento importado: %w", err)
+		}
+		return &application.Change{
+			Event: event, PreviousStatus: "", Started: startedAt != nil,
+			Finished: finishedAt != nil, UpdatedAt: now,
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("events: localizar fixture importado: %w", err)
+	}
+	var previous contracts.MatchStatus
+	if err := tx.QueryRow(ctx, `SELECT status FROM events WHERE id = $1::uuid FOR UPDATE`, eventID).Scan(&previous); err != nil {
+		return nil, fmt.Errorf("events: leer estado del fixture: %w", err)
+	}
+	if !domain.CanTransition(previous, fixture.Status, false) {
+		return nil, nil
+	}
+	started := previous != contracts.MatchLive && previous != contracts.MatchInterrupted &&
+		(fixture.Status == contracts.MatchLive || fixture.Status == contracts.MatchInterrupted)
+	finished := !previous.IsTerminal() && fixture.Status.IsTerminal()
+	_, err = tx.Exec(ctx, `
+		UPDATE events SET league_id = $2::uuid, home_team_id = $3::uuid, away_team_id = $4::uuid,
+		                  start_at = $5, status = $6,
+		                  home_score = COALESCE($7, home_score), away_score = COALESCE($8, away_score),
+		                  kicked_off_at = CASE WHEN $9::boolean THEN COALESCE(kicked_off_at, $10) ELSE kicked_off_at END,
+		                  finished_at = CASE WHEN $11::boolean THEN COALESCE(finished_at, $10) ELSE finished_at END
+		WHERE id = $1::uuid`, eventID, leagueID, homeID, awayID, fixture.StartAt, fixture.Status,
+		fixture.HomeScore, fixture.AwayScore, started, now, fixture.Status.IsTerminal())
+	if err != nil {
+		return nil, fmt.Errorf("events: actualizar fixture: %w", err)
+	}
+	event, err := scanEvent(tx.QueryRow(ctx, eventSelect+`WHERE e.id = $1::uuid`, eventID))
+	if err != nil {
+		return nil, fmt.Errorf("events: leer fixture actualizado: %w", err)
+	}
+	if previous == fixture.Status && !started && !finished {
+		return nil, nil
+	}
+	return &application.Change{
+		Event: event, PreviousStatus: previous,
+		Started: started, Finished: finished, UpdatedAt: now,
+	}, nil
+}
+
+func upsertLeague(ctx context.Context, tx pgx.Tx, provider string, league contracts.ProviderLeague) (string, error) {
+	if err := lockExternal(ctx, tx, provider, "league", league.ExternalID); err != nil {
+		return "", err
+	}
+	var id string
+	err := tx.QueryRow(ctx, `
+		SELECT entity_id::text FROM external_refs
+		WHERE provider = $1 AND entity_type = 'league' AND external_id = $2`, provider, league.ExternalID).Scan(&id)
+	if err == nil {
+		_, err = tx.Exec(ctx, `UPDATE leagues SET name = $2, country = $3 WHERE id = $1::uuid`, id, league.Name, league.Country)
+		if err != nil {
+			return "", fmt.Errorf("events: actualizar liga: %w", err)
+		}
+		return id, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("events: localizar liga: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `INSERT INTO leagues (name, country) VALUES ($1, $2) RETURNING id::text`, league.Name, league.Country).Scan(&id); err != nil {
+		return "", fmt.Errorf("events: insertar liga: %w", err)
+	}
+	return id, insertExternalRef(ctx, tx, provider, "league", id, league.ExternalID)
+}
+
+func upsertTeam(ctx context.Context, tx pgx.Tx, provider string, team contracts.ProviderTeam) (string, error) {
+	if err := lockExternal(ctx, tx, provider, "team", team.ExternalID); err != nil {
+		return "", err
+	}
+	var id string
+	err := tx.QueryRow(ctx, `
+		SELECT entity_id::text FROM external_refs
+		WHERE provider = $1 AND entity_type = 'team' AND external_id = $2`, provider, team.ExternalID).Scan(&id)
+	if err == nil {
+		_, err = tx.Exec(ctx, `UPDATE teams SET name = $2 WHERE id = $1::uuid`, id, team.Name)
+		if err != nil {
+			return "", fmt.Errorf("events: actualizar equipo: %w", err)
+		}
+		return id, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("events: localizar equipo: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `INSERT INTO teams (name) VALUES ($1) RETURNING id::text`, team.Name).Scan(&id); err != nil {
+		return "", fmt.Errorf("events: insertar equipo: %w", err)
+	}
+	return id, insertExternalRef(ctx, tx, provider, "team", id, team.ExternalID)
+}
+
+func lockExternal(ctx context.Context, tx pgx.Tx, provider, entityType, externalID string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		provider+":"+entityType+":"+externalID)
+	if err != nil {
+		return fmt.Errorf("events: bloquear referencia externa: %w", err)
+	}
+	return nil
+}
+
+func insertExternalRef(ctx context.Context, tx pgx.Tx, provider, entityType, entityID, externalID string) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO external_refs (provider, entity_type, entity_id, external_id)
+		VALUES ($1, $2, $3::uuid, $4)`, provider, entityType, entityID, externalID)
+	if err != nil {
+		return fmt.Errorf("events: guardar referencia externa: %w", err)
+	}
+	return nil
+}
+
+const eventSelect = `
+	SELECT e.id::text, l.id::text, l.name, l.country, l.featured,
+	       home.id::text, home.name, away.id::text, away.name,
+	       e.start_at, e.status, e.home_score, e.away_score, e.minute,
+	       e.featured, e.live_updated_at
+	FROM events e
+	JOIN leagues l ON l.id = e.league_id
+	JOIN teams home ON home.id = e.home_team_id
+	JOIN teams away ON away.id = e.away_team_id
+	`
+
+type scanner interface {
+	Scan(...any) error
+}
+
+func scanEvent(row scanner) (application.Event, error) {
+	var event application.Event
+	var status string
+	var homeScore, awayScore, minute *int32
+	err := row.Scan(
+		&event.ID, &event.League.ID, &event.League.Name, &event.League.Country, &event.League.Featured,
+		&event.Home.ID, &event.Home.Name, &event.Away.ID, &event.Away.Name,
+		&event.StartAt, &status, &homeScore, &awayScore, &minute, &event.Featured, &event.LiveUpdatedAt,
+	)
+	if err != nil {
+		return application.Event{}, err
+	}
+	event.Status = contracts.MatchStatus(status)
+	event.HomeScore, event.AwayScore, event.Minute = int32PointerToInt(homeScore), int32PointerToInt(awayScore), int32PointerToInt(minute)
+	return event, nil
+}
+
+func int32PointerToInt(value *int32) *int {
+	if value == nil {
+		return nil
+	}
+	result := int(*value)
+	return &result
+}
+
+func value[T any](item *T) T {
+	if item == nil {
+		var zero T
+		return zero
+	}
+	return *item
+}
+
+func emptyAsNil(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
+}
+
+var _ application.Repository = (*Repository)(nil)
