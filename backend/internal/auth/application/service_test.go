@@ -49,12 +49,50 @@ func (m *memUsers) FindByEmail(_ context.Context, email string) (domain.User, er
 	return u, nil
 }
 
-type memRefresh struct {
-	hashes [][]byte
+func (m *memUsers) FindByID(_ context.Context, _ db.Querier, id string) (domain.User, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, u := range m.byMail {
+		if u.ID == id {
+			return u, nil
+		}
+	}
+	return domain.User{}, errs.New(errs.ErrNotFound, "USER_NOT_FOUND", "no existe")
 }
 
-func (m *memRefresh) Create(_ context.Context, _ db.Querier, _ string, h []byte, _ time.Time) error {
+type memToken struct {
+	userID  string
+	exp     time.Time
+	revoked bool
+}
+
+type memRefresh struct {
+	hashes [][]byte
+	tokens map[string]*memToken
+}
+
+func (m *memRefresh) Create(_ context.Context, _ db.Querier, userID string, h []byte, exp time.Time) error {
 	m.hashes = append(m.hashes, h)
+	if m.tokens == nil {
+		m.tokens = map[string]*memToken{}
+	}
+	m.tokens[string(h)] = &memToken{userID: userID, exp: exp}
+	return nil
+}
+
+func (m *memRefresh) Consume(_ context.Context, _ db.Querier, h []byte, now time.Time) (string, error) {
+	tok, ok := m.tokens[string(h)]
+	if !ok || tok.revoked || !tok.exp.After(now) {
+		return "", errs.New(errs.ErrUnauthorized, "INVALID_REFRESH_TOKEN", "sesión vencida o cerrada")
+	}
+	tok.revoked = true
+	return tok.userID, nil
+}
+
+func (m *memRefresh) Revoke(_ context.Context, _ db.Querier, h []byte, _ time.Time) error {
+	if tok, ok := m.tokens[string(h)]; ok {
+		tok.revoked = true
+	}
 	return nil
 }
 

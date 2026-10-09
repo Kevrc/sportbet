@@ -43,3 +43,13 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (domain.
 	}
 	return u, err
 }
+
+func (r *UserRepository) FindByID(ctx context.Context, q db.Querier, id string) (domain.User, error) {
+	var u domain.User
+	err := q.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE id = $1`, id).
+		Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.Role, &u.Status, &u.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return u, errs.New(errs.ErrNotFound, "USER_NOT_FOUND", "usuario no encontrado")
+	}
+	return u, err
+}
