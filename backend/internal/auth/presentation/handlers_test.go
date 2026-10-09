@@ -19,8 +19,11 @@ import (
 )
 
 type stubService struct {
-	err error
-	got application.RegisterInput
+	err          error
+	got          application.RegisterInput
+	gotRefresh   string
+	loggedOut    string
+	logoutCalled bool
 }
 
 func (s *stubService) session() application.Session {
@@ -42,12 +45,27 @@ func (s *stubService) Login(context.Context, string, string) (application.Sessio
 	return s.session(), s.err
 }
 
-func do(t *testing.T, svc *stubService, path, body string) *httptest.ResponseRecorder {
+func (s *stubService) Refresh(_ context.Context, tok string) (application.Session, error) {
+	s.gotRefresh = tok
+	return s.session(), s.err
+}
+
+func (s *stubService) Logout(_ context.Context, tok string) error {
+	s.logoutCalled = true
+	s.loggedOut = tok
+	return s.err
+}
+
+func do(t *testing.T, svc *stubService, path, body string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
 	presentation.NewHandlers(svc, true).Routes(r)
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	r.ServeHTTP(rec, req)
 	return rec
 }
 
@@ -112,5 +130,46 @@ func TestAuthHandlerErrors(t *testing.T) {
 				t.Fatal("no debe enviar cookie en un error")
 			}
 		})
+	}
+}
+
+func TestRefreshHandler(t *testing.T) {
+	svc := &stubService{}
+	rec := do(t, svc, "/auth/refresh", "", &http.Cookie{Name: "sb_refresh", Value: "viejo"})
+	if rec.Code != http.StatusOK || svc.gotRefresh != "viejo" {
+		t.Fatalf("status = %d; token recibido = %q", rec.Code, svc.gotRefresh)
+	}
+	c := rec.Result().Cookies()
+	if len(c) != 1 || c[0].Value != "refresh-plano" {
+		t.Fatalf("debe rotar la cookie: %v", c)
+	}
+}
+
+func TestRefreshHandlerFailureClearsCookie(t *testing.T) {
+	svc := &stubService{err: errs.New(errs.ErrUnauthorized, "INVALID_REFRESH_TOKEN", "x")}
+	rec := do(t, svc, "/auth/refresh", "")
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "INVALID_REFRESH_TOKEN") {
+		t.Fatalf("status = %d; body = %s", rec.Code, rec.Body)
+	}
+	c := rec.Result().Cookies()
+	if len(c) != 1 || c[0].MaxAge >= 0 || c[0].Path != "/api/v1/auth" {
+		t.Fatalf("debe borrar la cookie: %+v", c)
+	}
+}
+
+func TestLogoutHandler(t *testing.T) {
+	svc := &stubService{}
+	rec := do(t, svc, "/auth/logout", "", &http.Cookie{Name: "sb_refresh", Value: "tok"})
+	if rec.Code != http.StatusNoContent || svc.loggedOut != "tok" {
+		t.Fatalf("status = %d; revocado = %q", rec.Code, svc.loggedOut)
+	}
+	c := rec.Result().Cookies()
+	if len(c) != 1 || c[0].MaxAge >= 0 {
+		t.Fatalf("debe borrar la cookie: %+v", c)
+	}
+
+	svc = &stubService{}
+	if rec := do(t, svc, "/auth/logout", ""); rec.Code != http.StatusNoContent || !svc.logoutCalled {
+		t.Fatalf("logout sin cookie: status = %d", rec.Code)
 	}
 }
