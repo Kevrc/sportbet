@@ -37,7 +37,9 @@ func Register(r chi.Router, d app.Deps) {
 		}
 		syncFixtures := func() {
 			now := d.Clock().UTC()
-			days := 3
+			// El plan gratuito de API-Football solo permite consultar de ayer
+			// a mañana: pedir pasado mañana falla y gasta una llamada.
+			days := 2
 			if d.Fixtures.Name() == "replay" {
 				days = 31
 			}
