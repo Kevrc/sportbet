@@ -34,7 +34,7 @@
           <span class="team">{{ e.away.name }}</span>
         </div>
         <p class="meta">
-          {{ e.startAt | date: 'EEEE d MMMM, HH:mm' }} ·
+          {{ e.startAt | date: "EEEE d 'de' MMMM, HH:mm" : undefined : 'es' }} ·
           <span class="badge" [class.live]="e.status === 'LIVE'">
             {{ statusText(e.status) }}
             @if (e.status === 'LIVE' && e.minute != null) {
@@ -80,7 +80,15 @@
       <p class="muted empty" role="status">Cargando evento…</p>
     }
   </div>
-  <aside class="side">
+  <aside class="side" id="boleto">
     <app-bet-slip />
   </aside>
 </div>
+
+@if (slip.count() > 0) {
+  <button type="button" class="slip-bar" (click)="goToSlip()">
+    <span>Boleto ({{ slip.count() }})</span>
+    <span class="bar-odd">Cuota {{ odd(slip.totalOddX100()) }}</span>
+    <span class="bar-cta">Ver boleto ↓</span>
+  </button>
+}

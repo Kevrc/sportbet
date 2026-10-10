@@ -1,4 +1,5 @@
-import { DatePipe } from '@angular/common';
+import { DOCUMENT, DatePipe, registerLocaleData } from '@angular/common';
+import localeEs from '@angular/common/locales/es';
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { inject } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
@@ -12,6 +13,9 @@ import { marketLockReason, marketTitle, scoreText, statusLabel } from '../events
 import { EventsService } from '../events.service';
 import { LiveScoresStore } from '../live-scores.store';
 
+// Las fechas del detalle se muestran en español (día y mes con nombre).
+registerLocaleData(localeEs);
+
 @Component({
   selector: 'app-event-detail-page',
   imports: [DatePipe, RouterLink, BetSlipComponent],
@@ -19,9 +23,11 @@ import { LiveScoresStore } from '../live-scores.store';
   templateUrl: './event-detail.page.html',
   styleUrl: './event-detail.page.scss',
   providers: [LiveScoresStore],
+  host: { '[class.has-bar]': 'slip.count() > 0' },
 })
 export class EventDetailPage {
   private readonly service = inject(EventsService);
+  private readonly document = inject(DOCUMENT);
   protected readonly live = inject(LiveScoresStore);
   protected readonly slip = inject(BetSlipStore);
 
@@ -89,6 +95,14 @@ export class EventDetailPage {
       label: s.label,
       oddX100: s.oddX100,
     });
+  }
+
+  /** En pantallas angostas el boleto queda abajo: la barra fija lleva hasta él y al campo de monto. */
+  protected goToSlip(): void {
+    this.document
+      .getElementById('boleto')
+      ?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    this.document.getElementById('stake')?.focus({ preventScroll: true });
   }
 
   protected retry(): void {

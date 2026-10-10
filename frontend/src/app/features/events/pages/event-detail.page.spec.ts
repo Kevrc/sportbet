@@ -247,4 +247,45 @@ describe('EventDetailPage', () => {
       expect(el.querySelector('app-bet-slip .notice')!.textContent).toContain('mismo partido');
     });
   });
+
+  describe('móvil', () => {
+    it('muestra la fecha con el día y el mes en español', async () => {
+      const { fixture, el } = setup(() => of(detail({ startAt: '2099-01-01T18:00:00Z' })));
+      await settle(fixture);
+      expect(el.querySelector('.meta')!.textContent).toContain('de enero');
+      expect(el.querySelector('.meta')!.textContent).not.toMatch(/January|Thursday|Friday/);
+    });
+
+    it('la barra del boleto aparece al elegir una cuota y lleva al campo de monto', async () => {
+      const scrolled: string[] = [];
+      HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+        scrolled.push(this.id);
+      };
+      const { fixture, el } = setup(() => of(detail({ startAt: farFuture })));
+      await settle(fixture);
+      expect(el.querySelector('.slip-bar')).toBeNull();
+
+      selections(el)[0].click();
+      await settle(fixture);
+      const bar = el.querySelector<HTMLButtonElement>('.slip-bar')!;
+      expect(bar.textContent!.replace(/\s+/g, ' ')).toContain('Boleto (1)');
+      expect(bar.textContent).toContain('Cuota 2.14');
+
+      bar.click();
+      await settle(fixture);
+      expect(scrolled).toEqual(['boleto']);
+      expect(document.activeElement?.id).toBe('stake');
+
+      selections(el)[1].click(); // reemplaza dentro del mismo mercado: sigue 1 selección
+      selections(el)[0].click();
+      await settle(fixture);
+      expect(el.querySelector('.slip-bar')).not.toBeNull();
+    });
+
+    it('sin selecciones no hay barra', async () => {
+      const { fixture, el } = setup(() => of(detail({ startAt: farFuture })));
+      await settle(fixture);
+      expect(el.querySelector('.slip-bar')).toBeNull();
+    });
+  });
 });

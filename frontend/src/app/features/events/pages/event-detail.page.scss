@@ -4,7 +4,8 @@
 
 .back {
   display: inline-block;
-  margin-bottom: 1rem;
+  margin-bottom: 0.6rem;
+  padding: 0.5rem 0;
   color: #1d4ed8;
   text-decoration: none;
 
@@ -139,7 +140,7 @@
 
 .selections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
   gap: 0.5rem;
 }
 
@@ -201,4 +202,73 @@ button.secondary {
   border: 1px solid #c9c9d1;
   border-radius: 8px;
   cursor: pointer;
+}
+
+// En pantallas angostas la cuota va debajo del nombre para que las tres opciones
+// de un mercado queden parejas aunque el nombre sea largo.
+@media (max-width: 480px) {
+  .selection {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    min-height: 3.5rem;
+    text-align: center;
+  }
+
+  .selection .odd {
+    font-size: 1.05rem;
+  }
+}
+
+// Barra fija con el resumen del boleto: solo cuando el boleto queda debajo de los mercados.
+.slip-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: #1d4ed8;
+  border: 0;
+  cursor: pointer;
+
+  span {
+    white-space: nowrap;
+  }
+
+  .bar-odd {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bar-cta {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: -6px;
+  }
+}
+
+:host(.has-bar) {
+  padding-bottom: 4.5rem;
+}
+
+@media (min-width: 900px) {
+  .slip-bar {
+    display: none;
+  }
+
+  :host(.has-bar) {
+    padding-bottom: 0;
+  }
 }
