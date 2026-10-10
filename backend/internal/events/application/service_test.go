@@ -22,8 +22,11 @@ func (r *repositoryStub) GetEvent(context.Context, string) (Event, error) {
 func (r *repositoryStub) SetFeatured(context.Context, string, bool) (Event, error) {
 	return Event{}, nil
 }
-func (r *repositoryStub) ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture) ([]Change, error) {
+func (r *repositoryStub) ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture, bool) ([]Change, error) {
 	r.imported = true
+	return nil, nil
+}
+func (r *repositoryStub) ListResultCandidates(context.Context, string, time.Time) ([]string, error) {
 	return nil, nil
 }
 func (r *repositoryStub) ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]Change, error) {

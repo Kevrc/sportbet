@@ -151,7 +151,7 @@ func listEventMarkets(ctx context.Context, q interface {
 	return markets, nil
 }
 
-func (r *Repository) ImportFixtures(ctx context.Context, provider string, now time.Time, fixtures []contracts.ProviderFixture) ([]application.Change, error) {
+func (r *Repository) ImportFixtures(ctx context.Context, provider string, now time.Time, fixtures []contracts.ProviderFixture, refresh bool) ([]application.Change, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("events: iniciar importación de fixtures: %w", err)
@@ -171,7 +171,7 @@ func (r *Repository) ImportFixtures(ctx context.Context, provider string, now ti
 		if err != nil {
 			return nil, err
 		}
-		change, err := r.upsertFixture(ctx, tx, provider, now, fixture, leagueID, homeID, awayID)
+		change, err := r.upsertFixture(ctx, tx, provider, now, fixture, leagueID, homeID, awayID, refresh)
 		if err != nil {
 			return nil, err
 		}
@@ -183,6 +183,36 @@ func (r *Repository) ImportFixtures(ctx context.Context, provider string, now ti
 		return nil, fmt.Errorf("events: confirmar importación de fixtures: %w", err)
 	}
 	return changes, nil
+}
+
+func (r *Repository) ListResultCandidates(ctx context.Context, provider string, cutoff time.Time) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT x.external_id
+		FROM external_refs x
+		JOIN events e ON e.id = x.entity_id
+		WHERE x.provider = $1 AND x.entity_type = 'event'
+		  AND e.status IN ('SCHEDULED', 'LIVE', 'INTERRUPTED')
+		  AND e.start_at <= $2
+		  AND e.start_at >= $2 - INTERVAL '36 hours'
+		  AND (e.live_updated_at IS NULL OR e.live_updated_at <= $2)
+		ORDER BY e.start_at
+		LIMIT 100`, provider, cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("events: buscar resultados pendientes: %w", err)
+	}
+	defer rows.Close()
+	ids := make([]string, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("events: leer referencia pendiente: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("events: recorrer resultados pendientes: %w", err)
+	}
+	return ids, nil
 }
 
 func (r *Repository) ApplyLiveScores(ctx context.Context, provider string, now time.Time, scores []contracts.LiveScore) ([]application.Change, error) {
@@ -252,6 +282,7 @@ func (r *Repository) upsertFixture(
 	now time.Time,
 	fixture contracts.ProviderFixture,
 	leagueID, homeID, awayID string,
+	refresh bool,
 ) (*application.Change, error) {
 	if err := lockExternal(ctx, tx, provider, "event", fixture.ExternalID); err != nil {
 		return nil, err
@@ -263,19 +294,26 @@ func (r *Repository) upsertFixture(
 	if errors.Is(err, pgx.ErrNoRows) {
 		var homeScore, awayScore *int
 		homeScore, awayScore = fixture.HomeScore, fixture.AwayScore
-		var startedAt, finishedAt *time.Time
+		var startedAt, finishedAt, liveUpdatedAt *time.Time
 		if fixture.Status == contracts.MatchLive || fixture.Status == contracts.MatchInterrupted {
-			startedAt = &now
+			startedAt = &fixture.StartAt
+			liveUpdatedAt = &now
 		}
 		if fixture.Status.IsTerminal() {
 			finishedAt = &now
 		}
+		if fixture.Status == contracts.MatchFinished {
+			startedAt = &fixture.StartAt
+		}
+		if refresh {
+			liveUpdatedAt = &now
+		}
 		err = tx.QueryRow(ctx, `
 			INSERT INTO events (league_id, home_team_id, away_team_id, start_at, status,
-			                    home_score, away_score, kicked_off_at, finished_at)
-			VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9)
+			                    home_score, away_score, kicked_off_at, live_updated_at, finished_at)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10)
 			RETURNING id::text`, leagueID, homeID, awayID, fixture.StartAt, fixture.Status,
-			homeScore, awayScore, startedAt, finishedAt).Scan(&eventID)
+			homeScore, awayScore, startedAt, liveUpdatedAt, finishedAt).Scan(&eventID)
 		if err != nil {
 			return nil, fmt.Errorf("events: insertar evento: %w", err)
 		}
@@ -295,7 +333,10 @@ func (r *Repository) upsertFixture(
 		return nil, fmt.Errorf("events: localizar fixture importado: %w", err)
 	}
 	var previous contracts.MatchStatus
-	if err := tx.QueryRow(ctx, `SELECT status FROM events WHERE id = $1::uuid FOR UPDATE`, eventID).Scan(&previous); err != nil {
+	var previousHomeScore, previousAwayScore *int32
+	if err := tx.QueryRow(ctx, `
+		SELECT status, home_score, away_score FROM events WHERE id = $1::uuid FOR UPDATE`,
+		eventID).Scan(&previous, &previousHomeScore, &previousAwayScore); err != nil {
 		return nil, fmt.Errorf("events: leer estado del fixture: %w", err)
 	}
 	if !domain.CanTransition(previous, fixture.Status, false) {
@@ -304,14 +345,22 @@ func (r *Repository) upsertFixture(
 	started := previous != contracts.MatchLive && previous != contracts.MatchInterrupted &&
 		(fixture.Status == contracts.MatchLive || fixture.Status == contracts.MatchInterrupted)
 	finished := !previous.IsTerminal() && fixture.Status.IsTerminal()
+	scoreChanged := scoreDiffers(previousHomeScore, fixture.HomeScore) || scoreDiffers(previousAwayScore, fixture.AwayScore)
 	_, err = tx.Exec(ctx, `
 		UPDATE events SET league_id = $2::uuid, home_team_id = $3::uuid, away_team_id = $4::uuid,
 		                  start_at = $5, status = $6,
 		                  home_score = COALESCE($7, home_score), away_score = COALESCE($8, away_score),
-		                  kicked_off_at = CASE WHEN $9::boolean THEN COALESCE(kicked_off_at, $10) ELSE kicked_off_at END,
-		                  finished_at = CASE WHEN $11::boolean THEN COALESCE(finished_at, $10) ELSE finished_at END
+		                  kicked_off_at = CASE
+		                      WHEN $9::boolean THEN COALESCE(kicked_off_at, $14)
+		                      WHEN $11::boolean AND $13::boolean THEN COALESCE(kicked_off_at, $14)
+		                      ELSE kicked_off_at END,
+		                  finished_at = CASE WHEN $11::boolean THEN COALESCE(finished_at, $10) ELSE finished_at END,
+		                  live_updated_at = CASE WHEN $12::boolean THEN $10
+		                      WHEN $9::boolean THEN COALESCE(live_updated_at, $10)
+		                      ELSE live_updated_at END
 		WHERE id = $1::uuid`, eventID, leagueID, homeID, awayID, fixture.StartAt, fixture.Status,
-		fixture.HomeScore, fixture.AwayScore, started, now, fixture.Status.IsTerminal())
+		fixture.HomeScore, fixture.AwayScore, started, now, fixture.Status.IsTerminal(), refresh,
+		fixture.Status == contracts.MatchFinished, fixture.StartAt)
 	if err != nil {
 		return nil, fmt.Errorf("events: actualizar fixture: %w", err)
 	}
@@ -319,13 +368,20 @@ func (r *Repository) upsertFixture(
 	if err != nil {
 		return nil, fmt.Errorf("events: leer fixture actualizado: %w", err)
 	}
-	if previous == fixture.Status && !started && !finished {
+	if previous == fixture.Status && !started && !finished && !scoreChanged {
 		return nil, nil
 	}
 	return &application.Change{
 		Event: event, PreviousStatus: previous,
 		Started: started, Finished: finished, UpdatedAt: now,
 	}, nil
+}
+
+func scoreDiffers(previous *int32, current *int) bool {
+	if current == nil {
+		return false
+	}
+	return previous == nil || int(*previous) != *current
 }
 
 func upsertLeague(ctx context.Context, tx pgx.Tx, provider string, league contracts.ProviderLeague) (string, error) {

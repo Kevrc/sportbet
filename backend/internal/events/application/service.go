@@ -75,7 +75,8 @@ type Repository interface {
 	ListEvents(context.Context, Filter) ([]Event, error)
 	GetEvent(context.Context, string) (Event, error)
 	SetFeatured(context.Context, string, bool) (Event, error)
-	ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture) ([]Change, error)
+	ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture, bool) ([]Change, error)
+	ListResultCandidates(context.Context, string, time.Time) ([]string, error)
 	ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]Change, error)
 }
 
@@ -137,12 +138,44 @@ func (s *Service) ImportFixtures(ctx context.Context, provider string, now time.
 			return errs.Wrap(errs.ErrValidation, err, "INVALID_FIXTURE", "el proveedor entregó un evento inválido")
 		}
 	}
-	changes, err := s.repository.ImportFixtures(ctx, provider, now, fixtures)
+	changes, err := s.repository.ImportFixtures(ctx, provider, now, fixtures, false)
 	if err != nil {
 		return err
 	}
 	s.publishChanges(ctx, changes)
 	return nil
+}
+
+func (s *Service) RefreshResult(ctx context.Context, provider string, now time.Time, fixture contracts.ProviderFixture) error {
+	if provider == "" {
+		return errs.New(errs.ErrValidation, "INVALID_PROVIDER", "el proveedor es obligatorio")
+	}
+	err := (domain.Fixture{
+		ExternalID: fixture.ExternalID,
+		League:     fixture.League,
+		Home:       fixture.Home,
+		Away:       fixture.Away,
+		StartAt:    fixture.StartAt,
+		Status:     fixture.Status,
+		HomeScore:  fixture.HomeScore,
+		AwayScore:  fixture.AwayScore,
+	}).Validate()
+	if err != nil {
+		return errs.Wrap(errs.ErrValidation, err, "INVALID_FIXTURE", "el proveedor entregó un resultado inválido")
+	}
+	changes, err := s.repository.ImportFixtures(ctx, provider, now, []contracts.ProviderFixture{fixture}, true)
+	if err != nil {
+		return err
+	}
+	s.publishChanges(ctx, changes)
+	return nil
+}
+
+func (s *Service) ListResultCandidates(ctx context.Context, provider string, cutoff time.Time) ([]string, error) {
+	if provider == "" {
+		return nil, errs.New(errs.ErrValidation, "INVALID_PROVIDER", "el proveedor es obligatorio")
+	}
+	return s.repository.ListResultCandidates(ctx, provider, cutoff)
 }
 
 func (s *Service) ApplyLiveScores(ctx context.Context, provider string, now time.Time, scores []contracts.LiveScore) error {

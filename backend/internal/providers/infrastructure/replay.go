@@ -102,8 +102,12 @@ func (p *ReplayProvider) FixtureResult(ctx context.Context, externalID string) (
 		return contracts.ProviderFixture{}, errs.New(errs.ErrNotFound, "FIXTURE_NOT_FOUND", "fixture no encontrado")
 	}
 
-	frame := p.frames[len(p.frames)-1]
 	fixture := p.fixture
+	frame, _, started := p.currentFrame()
+	fixture.Status = contracts.MatchScheduled
+	if !started {
+		return fixture, nil
+	}
 	fixture.Status = matchStatus(frame.Status)
 	fixture.HomeScore = intPointer(frame.Home)
 	fixture.AwayScore = intPointer(frame.Away)
@@ -114,10 +118,29 @@ func (p *ReplayProvider) LiveScores(ctx context.Context) ([]contracts.LiveScore,
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	frame, now, started := p.currentFrame()
+	if !started {
+		return nil, nil
+	}
+	status := matchStatus(frame.Status)
+	if status != contracts.MatchLive && status != contracts.MatchInterrupted {
+		return nil, nil
+	}
+	return []contracts.LiveScore{{
+		ExternalID: p.fixture.ExternalID,
+		Status:     status,
+		HomeScore:  frame.Home,
+		AwayScore:  frame.Away,
+		Minute:     frame.Minute,
+		ObservedAt: now,
+	}}, nil
+}
+
+func (p *ReplayProvider) currentFrame() (replayFrame, time.Time, bool) {
 	now := p.clock().UTC()
 	elapsed := now.Sub(p.fixture.StartAt)
 	if elapsed < 0 {
-		return nil, nil
+		return replayFrame{}, now, false
 	}
 	elapsedSeconds := int64(elapsed / time.Second)
 	lastOffset := p.frames[len(p.frames)-1].OffsetSeconds
@@ -133,18 +156,7 @@ func (p *ReplayProvider) LiveScores(ctx context.Context) ([]contracts.LiveScore,
 		}
 		frame = next
 	}
-	status := matchStatus(frame.Status)
-	if status != contracts.MatchLive && status != contracts.MatchInterrupted {
-		return nil, nil
-	}
-	return []contracts.LiveScore{{
-		ExternalID: p.fixture.ExternalID,
-		Status:     status,
-		HomeScore:  frame.Home,
-		AwayScore:  frame.Away,
-		Minute:     frame.Minute,
-		ObservedAt: now,
-	}}, nil
+	return frame, now, true
 }
 
 func validateReplay(source replayFile) error {

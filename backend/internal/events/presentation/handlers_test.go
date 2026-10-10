@@ -30,7 +30,10 @@ func (r *repositoryStub) GetEvent(context.Context, string) (application.Event, e
 func (r *repositoryStub) SetFeatured(context.Context, string, bool) (application.Event, error) {
 	return r.event, nil
 }
-func (r *repositoryStub) ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture) ([]application.Change, error) {
+func (r *repositoryStub) ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture, bool) ([]application.Change, error) {
+	return nil, nil
+}
+func (r *repositoryStub) ListResultCandidates(context.Context, string, time.Time) ([]string, error) {
 	return nil, nil
 }
 func (r *repositoryStub) ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]application.Change, error) {
