@@ -1,0 +1,269 @@
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.subtitle,
+.muted {
+  color: #5b5b66;
+}
+
+.subtitle {
+  margin: 0.25rem 0 0;
+}
+
+.filters {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #e3e3e8;
+  border-radius: 12px;
+
+  label {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #5b5b66;
+  }
+
+  select {
+    padding: 0.4rem 0.5rem;
+    font: inherit;
+    font-weight: 400;
+    color: #1b1b1f;
+    border: 1px solid #c9c9d1;
+    border-radius: 8px;
+    background: #fff;
+  }
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #912018;
+}
+
+.loading {
+  opacity: 0.6;
+}
+
+.bets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bet {
+  padding: 0.85rem 1rem;
+  background: #fff;
+  border: 1px solid #e3e3e8;
+  border-left-width: 4px;
+  border-radius: 12px;
+
+  &[data-status='WON'] {
+    border-left-color: #067647;
+  }
+
+  &[data-status='LOST'] {
+    border-left-color: #b42318;
+  }
+
+  &[data-status='VOID'] {
+    border-left-color: #8a8a94;
+  }
+
+  &[data-status='PENDING'] {
+    border-left-color: #1d4ed8;
+  }
+}
+
+.bet-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+
+  .kind {
+    font-weight: 700;
+  }
+
+  .when {
+    flex: 1;
+    font-size: 0.85rem;
+    color: #5b5b66;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.badge {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #eef2ff;
+  color: #3730a3;
+
+  &[data-status='WON'] {
+    background: #ecfdf3;
+    color: #067647;
+  }
+
+  &[data-status='LOST'] {
+    background: #fee4e2;
+    color: #912018;
+  }
+
+  &[data-status='VOID'] {
+    background: #f2f2f4;
+    color: #5b5b66;
+  }
+}
+
+.selections {
+  margin: 0 0 0.6rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid #ededf1;
+  }
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.9rem;
+
+  .event {
+    font-weight: 600;
+  }
+
+  .market {
+    color: #5b5b66;
+    font-size: 0.8rem;
+  }
+
+  .pick {
+    font-weight: 600;
+    color: #1d4ed8;
+  }
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+
+  .result {
+    font-size: 0.75rem;
+    color: #5b5b66;
+
+    &[data-result='WON'] {
+      color: #067647;
+      font-weight: 600;
+    }
+
+    &[data-result='LOST'] {
+      color: #b42318;
+      font-weight: 600;
+    }
+  }
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ededf1;
+
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  dt {
+    font-size: 0.75rem;
+    color: #5b5b66;
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+
+    &.plus {
+      color: #067647;
+    }
+  }
+}
+
+.empty {
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+button {
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+
+  &.secondary {
+    background: #fff;
+    border-color: #c9c9d1;
+    color: #1b1b1f;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 1px;
+  }
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}

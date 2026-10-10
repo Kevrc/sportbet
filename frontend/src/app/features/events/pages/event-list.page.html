@@ -1,0 +1,118 @@
+<header class="head">
+  <div>
+    <h1>Eventos</h1>
+    <p class="subtitle">Elige un partido para ver sus mercados y cuotas.</p>
+  </div>
+  <button type="button" class="secondary" (click)="reload()" [disabled]="loading()">
+    Actualizar
+  </button>
+</header>
+
+@if (!live.connected()) {
+  <p class="offline" role="status">
+    Sin conexión en tiempo real: los marcadores pueden estar desactualizados.
+  </p>
+}
+
+<form class="filters" (submit)="$event.preventDefault()" aria-label="Filtros de eventos">
+  <label>
+    Fecha
+    <input
+      type="date"
+      [value]="filters().date ?? ''"
+      (change)="setFilter('date', $any($event.target).value)"
+    />
+  </label>
+  <label>
+    Liga
+    <select
+      [value]="filters().leagueId ?? ''"
+      (change)="setFilter('leagueId', $any($event.target).value)"
+    >
+      <option value="">Todas</option>
+      @for (l of leagues(); track l.id) {
+        <option [value]="l.id">{{ l.name }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    Estado
+    <select
+      [value]="filters().status ?? ''"
+      (change)="setFilter('status', $any($event.target).value)"
+    >
+      <option value="">Todos</option>
+      @for (s of statusFilters; track s.value) {
+        <option [value]="s.value">{{ s.label }}</option>
+      }
+    </select>
+  </label>
+  <label class="check">
+    <input
+      type="checkbox"
+      [checked]="!!filters().featured"
+      (change)="setFilter('featured', $any($event.target).checked || '')"
+    />
+    Solo destacados
+  </label>
+  @if (hasFilters()) {
+    <button type="button" class="secondary" (click)="clearFilters()">Limpiar filtros</button>
+  }
+</form>
+
+@if (error(); as msg) {
+  <p class="alert" role="alert">
+    {{ msg }}
+    <button type="button" class="secondary" (click)="reload()">Reintentar</button>
+  </p>
+}
+
+<div [attr.aria-busy]="loading()" [class.loading]="loading()">
+  @for (g of groups(); track g.league.id) {
+    <section class="league" [attr.aria-label]="g.league.name">
+      <h2>
+        {{ g.league.name }}
+        <span class="country">{{ g.league.country }}</span>
+      </h2>
+      <ul>
+        @for (e of g.events; track e.id) {
+          <li>
+            <a class="event" [routerLink]="['/events', e.id]">
+              <span class="when">{{ e.startAt | date: 'dd/MM HH:mm' }}</span>
+              <span class="teams">
+                <span>{{ e.home.name }}</span>
+                <span>{{ e.away.name }}</span>
+              </span>
+              <span class="score">{{ score(e) ?? '' }}</span>
+              <span
+                class="badge"
+                [class.live]="e.status === 'LIVE'"
+                [class.off]="
+                  e.status === 'POSTPONED' || e.status === 'CANCELLED' || e.status === 'ABANDONED'
+                "
+              >
+                {{ statusText(e.status) }}
+                @if (e.status === 'LIVE' && e.minute != null) {
+                  {{ e.minute }}'
+                }
+              </span>
+              @if (live.isStale(e)) {
+                <span class="stale">Desactualizado</span>
+              }
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  } @empty {
+    @if (!loading() && !error()) {
+      <p class="muted empty">
+        @if (hasFilters()) {
+          No hay eventos con esos filtros.
+        } @else {
+          No hay eventos disponibles por ahora.
+        }
+      </p>
+    }
+  }
+</div>

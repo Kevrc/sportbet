@@ -1,0 +1,108 @@
+<header class="head">
+  <div>
+    <h1>Mis apuestas</h1>
+    <p class="subtitle">Cada apuesta conserva la cuota que tenía al momento de apostar.</p>
+  </div>
+  <button type="button" class="secondary" (click)="reload()" [disabled]="loading()">
+    Actualizar
+  </button>
+</header>
+
+<form class="filters" (submit)="$event.preventDefault()" aria-label="Filtro de apuestas">
+  <label>
+    Estado
+    <select [value]="status() ?? ''" (change)="setStatus($any($event.target).value)">
+      <option value="">Todas</option>
+      @for (s of statusFilters; track s.value) {
+        <option [value]="s.value">{{ s.label }}</option>
+      }
+    </select>
+  </label>
+</form>
+
+@if (error(); as msg) {
+  <p class="alert" role="alert">
+    {{ msg }}
+    <button type="button" class="secondary" (click)="reload()">Reintentar</button>
+  </p>
+}
+
+<div [attr.aria-busy]="loading()" [class.loading]="loading()">
+  <ul class="bets">
+    @for (b of bets(); track b.id) {
+      @let out = outcome(b);
+      <li class="bet" [attr.data-status]="b.status">
+        <header class="bet-head">
+          <span class="kind">{{ kind(b.selections.length) }}</span>
+          <span class="when">{{ b.placedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+          <span class="badge" [attr.data-status]="b.status">{{ statusText(b.status) }}</span>
+        </header>
+
+        <ul class="selections">
+          @for (s of b.selections; track s.selectionId) {
+            <li>
+              <div class="info">
+                <span class="event">{{ s.eventName }}</span>
+                <span class="market">{{ market(s.marketCode) }}</span>
+                <span class="pick">{{ s.label }}</span>
+              </div>
+              <div class="right">
+                <strong class="odd">{{ odd(s.oddX100) }}</strong>
+                <span class="result" [attr.data-result]="s.result">{{ resultText(s.result) }}</span>
+              </div>
+            </li>
+          }
+        </ul>
+
+        <dl class="totals">
+          <div>
+            <dt>Monto</dt>
+            <dd>{{ money(b.stakeCents) }}</dd>
+          </div>
+          <div>
+            <dt>Cuota total</dt>
+            <dd>{{ odd(b.totalOddX100) }}</dd>
+          </div>
+          <div>
+            <dt>{{ out.label }}</dt>
+            <dd [class.plus]="b.status === 'WON'">
+              {{ out.cents === null ? '—' : money(out.cents) }}
+            </dd>
+          </div>
+        </dl>
+      </li>
+    } @empty {
+      @if (!loading() && !error()) {
+        <li class="empty muted">
+          @if (status()) {
+            No tienes apuestas con ese estado.
+          } @else {
+            Todavía no has apostado. <a routerLink="/events">Ver eventos</a>
+          }
+        </li>
+      }
+    }
+  </ul>
+</div>
+
+@if (totalPages() > 1) {
+  <nav class="pager" aria-label="Paginación">
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="page() <= 1 || loading()"
+      (click)="goTo(page() - 1)"
+    >
+      Anterior
+    </button>
+    <span>Página {{ page() }} de {{ totalPages() }}</span>
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="page() >= totalPages() || loading()"
+      (click)="goTo(page() + 1)"
+    >
+      Siguiente
+    </button>
+  </nav>
+}

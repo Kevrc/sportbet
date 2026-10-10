@@ -1,0 +1,163 @@
+<section class="slip" aria-labelledby="slip-title">
+  <header class="head">
+    <h2 id="slip-title">
+      Boleto
+      @if (slip.count() > 0) {
+        <span class="count">{{ slip.count() }}</span>
+      }
+    </h2>
+    @if (slip.count() > 0) {
+      <button type="button" class="link" (click)="slip.clear()">Vaciar</button>
+    }
+  </header>
+
+  @if (slip.notice(); as msg) {
+    <p class="notice" role="status">
+      {{ msg }}
+      <button type="button" class="link" (click)="slip.dismissNotice()">Entendido</button>
+    </p>
+  }
+
+  @if (slip.result(); as r) {
+    @if (r.kind === 'success') {
+      <div class="success" role="status">
+        <strong>¡Apuesta realizada!</strong>
+        <dl>
+          <div>
+            <dt>Monto</dt>
+            <dd>{{ money(r.summary.stakeCents) }}</dd>
+          </div>
+          <div>
+            <dt>Cuota total</dt>
+            <dd>{{ odd(r.summary.totalOddX100) }}</dd>
+          </div>
+          <div>
+            <dt>Pago potencial</dt>
+            <dd>{{ money(r.summary.potentialPayoutCents) }}</dd>
+          </div>
+        </dl>
+        <div class="actions">
+          <a routerLink="/bets">Ver mis apuestas</a>
+          <button type="button" class="link" (click)="slip.dismissResult()">Cerrar</button>
+        </div>
+      </div>
+    } @else {
+      <div class="error" role="alert">
+        <p>{{ r.failure.message }}</p>
+        @if (fieldErrors().length > 0) {
+          <ul>
+            @for (f of fieldErrors(); track f.field) {
+              <li>{{ f.field }}: {{ f.message }}</li>
+            }
+          </ul>
+        }
+        @if (r.failure.kind === 'unauthorized') {
+          <button type="button" class="link" (click)="goToLogin()">Iniciar sesión</button>
+        }
+      </div>
+    }
+  }
+
+  @if (slip.count() === 0) {
+    @if (!slip.result()) {
+      <p class="empty">Elige una cuota para empezar tu boleto.</p>
+    }
+  } @else {
+    <p class="kind">{{ kind() }}</p>
+
+    <ul class="selections">
+      @for (s of slip.selections(); track s.selectionId) {
+        <li [class.changed]="s.status === 'changed'" [class.closed]="s.status === 'closed'">
+          <div class="info">
+            <span class="event">{{ s.eventName }}</span>
+            <span class="market">{{ s.marketLabel }}</span>
+            <span class="pick">{{ s.label }}</span>
+            @if (s.status === 'changed') {
+              <span class="flag">La cuota cambió</span>
+            } @else if (s.status === 'closed') {
+              <span class="flag">Mercado cerrado: quítala para apostar</span>
+            }
+          </div>
+          <div class="odd-col">
+            @if (s.status === 'changed' && s.previousOddX100) {
+              <s class="old" [attr.aria-label]="'Cuota anterior ' + odd(s.previousOddX100)">{{
+                odd(s.previousOddX100)
+              }}</s>
+            }
+            <strong class="odd">{{ odd(s.oddX100) }}</strong>
+            <button
+              type="button"
+              class="remove"
+              (click)="slip.remove(s.selectionId)"
+              [attr.aria-label]="'Quitar ' + s.label + ' de ' + s.eventName"
+            >
+              ✕
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+
+    @if (slip.hasChanged()) {
+      <div class="confirm">
+        <p>Las cuotas cambiaron. Revísalas antes de apostar.</p>
+        <button type="button" class="secondary" (click)="slip.acceptChanges()">
+          Aceptar cuotas nuevas
+        </button>
+      </div>
+    }
+
+    <div class="stake">
+      <label for="stake">Monto a apostar</label>
+      <input
+        id="stake"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder="0.00"
+        [value]="slip.stakeText()"
+        (input)="onStake($event)"
+        [attr.aria-invalid]="slip.stakeError() ? 'true' : null"
+        [attr.aria-describedby]="slip.stakeError() ? 'stake-error' : 'stake-hint'"
+      />
+      @if (slip.stakeError(); as msg) {
+        <p id="stake-error" class="field-error" role="alert">{{ msg }}</p>
+      } @else {
+        <p id="stake-hint" class="hint">Entre 1.00 y 500.00</p>
+      }
+      @if (loggedIn() && balance() !== null) {
+        <p class="hint">Saldo disponible: {{ money(balance()!) }}</p>
+      }
+    </div>
+
+    <dl class="summary">
+      <div>
+        <dt>Cuota total</dt>
+        <dd>
+          {{ odd(slip.totalOddX100()) }}
+          @if (slip.oddCapped()) {
+            <span class="hint">(máximo)</span>
+          }
+        </dd>
+      </div>
+      <div>
+        <dt>Pago potencial</dt>
+        <dd>{{ slip.payoutCents() === null ? '—' : money(slip.payoutCents()!) }}</dd>
+      </div>
+    </dl>
+
+    @if (slip.payoutError(); as msg) {
+      <p class="field-error" role="alert">{{ msg }}</p>
+    }
+
+    @if (loggedIn()) {
+      <button type="button" class="primary" [disabled]="!slip.canPlace()" (click)="slip.place()">
+        {{ slip.placing() ? 'Apostando…' : 'Apostar' }}
+      </button>
+    } @else {
+      <button type="button" class="primary" (click)="goToLogin()">
+        Inicia sesión para apostar
+      </button>
+    }
+  }
+</section>

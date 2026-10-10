@@ -1,0 +1,274 @@
+:host {
+  display: block;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  padding: 0.5rem 0;
+  color: #1d4ed8;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.muted {
+  color: #5b5b66;
+}
+
+.empty {
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.offline {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #fffaeb;
+  color: #93370d;
+  font-size: 0.85rem;
+}
+
+.stale {
+  color: #93370d;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #912018;
+}
+
+.hero {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e3e3e8;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.league,
+.meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5b5b66;
+}
+
+.match {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+
+.team {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.score {
+  font-size: 1.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.vs {
+  color: #8a8a94;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #eef2ff;
+  color: #3730a3;
+
+  &.live {
+    background: #fee4e2;
+    color: #912018;
+  }
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+
+  .side {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+.market {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: #fff;
+  border: 1px solid #e3e3e8;
+  border-radius: 12px;
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+  }
+}
+
+.lock {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #8a8a94;
+}
+
+.selections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: #1b1b1f;
+  background: #f7f7f9;
+  border: 1px solid #c9c9d1;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: #eef2ff;
+    border-color: #1d4ed8;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &.selected {
+    border-color: #1d4ed8;
+    background: #dbe7ff;
+    box-shadow: inset 0 0 0 1px #1d4ed8;
+  }
+
+  &.won {
+    border-color: #067647;
+    background: #ecfdf3;
+  }
+
+  &.lost {
+    text-decoration: line-through;
+  }
+}
+
+.odd {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+button.secondary {
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid #c9c9d1;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+// En pantallas angostas la cuota va debajo del nombre para que las tres opciones
+// de un mercado queden parejas aunque el nombre sea largo.
+@media (max-width: 480px) {
+  .selection {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    min-height: 3.5rem;
+    text-align: center;
+  }
+
+  .selection .odd {
+    font-size: 1.05rem;
+  }
+}
+
+// Barra fija con el resumen del boleto: solo cuando el boleto queda debajo de los mercados.
+.slip-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: #1d4ed8;
+  border: 0;
+  cursor: pointer;
+
+  span {
+    white-space: nowrap;
+  }
+
+  .bar-odd {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bar-cta {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: -6px;
+  }
+}
+
+:host(.has-bar) {
+  padding-bottom: 4.5rem;
+}
+
+@media (min-width: 900px) {
+  .slip-bar {
+    display: none;
+  }
+
+  :host(.has-bar) {
+    padding-bottom: 0;
+  }
+}
