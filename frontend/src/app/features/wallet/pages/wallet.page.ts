@@ -21,6 +21,7 @@ export class WalletPage {
   private readonly wallet = inject(WalletStore);
 
   protected readonly balance = this.wallet.balanceCents;
+  protected readonly balanceFailed = this.wallet.failed;
   protected readonly txs = signal<WalletTransaction[]>([]);
   protected readonly page = signal(1);
   protected readonly total = signal(0);

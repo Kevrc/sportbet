@@ -11,12 +11,21 @@
 <section class="balance" aria-label="Saldo disponible">
   <span class="balance-label">Saldo disponible</span>
   @let b = balance();
-  @if (b === null) {
+  @if (b === null && balanceFailed()) {
+    <strong class="balance-value muted">No disponible</strong>
+  } @else if (b === null) {
     <strong class="balance-value muted">—</strong>
   } @else {
     <strong class="balance-value">{{ money(b) }}</strong>
   }
 </section>
+
+@if (balanceFailed()) {
+  <p class="alert" role="alert">
+    No se pudo cargar tu saldo.
+    <button type="button" class="secondary" (click)="load(page())">Reintentar</button>
+  </p>
+}
 
 @if (error(); as msg) {
   <p class="alert" role="alert">
@@ -52,7 +61,7 @@
           <td class="num">{{ money(t.balanceAfterCents) }}</td>
         </tr>
       } @empty {
-        @if (!loading() && !error()) {
+        @if (!loading() && !error() && !balanceFailed()) {
           <tr>
             <td colspan="5" class="muted">Todavía no tienes movimientos.</td>
           </tr>

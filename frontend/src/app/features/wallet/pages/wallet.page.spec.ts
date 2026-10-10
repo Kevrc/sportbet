@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, defer, of, throwError } from 'rxjs';
 
 import { Paged, Wallet, WalletTransaction } from '../../../core/api/models';
 import { WalletService } from '../wallet.service';
@@ -115,5 +115,28 @@ describe('WalletPage', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(el.querySelector('.balance-value')!.textContent).toContain('0.00');
+  });
+
+  it('si falla el saldo lo avisa en vez de mostrar una billetera vacía, y permite reintentar', async () => {
+    let fail = true;
+    const { fixture, el } = setup({
+      wallet: defer(() =>
+        fail
+          ? throwError(() => new Error('500'))
+          : of({ balanceCents: 100_000, currency: 'VIRT' as const }),
+      ),
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alert"]')!.textContent).toContain('No se pudo cargar tu saldo');
+    expect(el.querySelector('.balance-value')!.textContent).toContain('No disponible');
+    expect(el.textContent).not.toContain('Todavía no tienes movimientos');
+
+    fail = false;
+    button(el, 'Reintentar').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(el.querySelector('.balance-value')!.textContent).toContain('1 000.00');
   });
 });
