@@ -35,7 +35,7 @@ func RunWalletServiceSuite(t *testing.T, newSvc WalletFactory) {
 	t.Run("Debit rechaza saldo insuficiente", func(t *testing.T) {
 		svc, q, uid := newSvc(t)
 		must(t, svc.CreateWallet(ctx, q, uid, 500))
-		_, err := svc.Debit(ctx, q, uid, 501, contracts.TxRef{Type: contracts.TxBetStake, Reference: "bet:x"})
+		_, err := svc.Debit(ctx, q, uid, 501, contracts.TxRef{Type: contracts.TxBetStake, Reference: "bet:" + uid})
 		if !errors.Is(err, errs.ErrInsufficientFunds) {
 			t.Fatalf("err = %v; want ErrInsufficientFunds", err)
 		}
@@ -44,7 +44,7 @@ func RunWalletServiceSuite(t *testing.T, newSvc WalletFactory) {
 	t.Run("Credit con referencia repetida no paga dos veces", func(t *testing.T) {
 		svc, q, uid := newSvc(t)
 		must(t, svc.CreateWallet(ctx, q, uid, 0))
-		ref := contracts.TxRef{Type: contracts.TxBetPayout, Reference: "bet:1:v0"}
+		ref := contracts.TxRef{Type: contracts.TxBetPayout, Reference: "bet:" + uid + ":v0"}
 		if _, err := svc.Credit(ctx, q, uid, 300, ref); err != nil {
 			t.Fatal(err)
 		}

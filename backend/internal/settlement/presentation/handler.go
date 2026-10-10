@@ -20,7 +20,7 @@ func NewSettlementHandler(settler *application.Settler) *SettlementHandler {
 
 func (h *SettlementHandler) RegisterRoutes(r chi.Router, auth contracts.Authenticator) {
 	// Endpoint exclusivo para el rol 'admin'
-	r.With(auth.RequireAuth, auth.RequireRole(contracts.RoleAdmin)).Post("/api/v1/admin/settlement/run", h.RunSweep)
+	r.With(auth.RequireAuth, auth.RequireRole(contracts.RoleAdmin)).Post("/admin/settlement/run", h.RunSweep)
 }
 
 // RunSweep fuerza un barrido sincrónico de partidos terminados.

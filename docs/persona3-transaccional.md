@@ -29,3 +29,11 @@ El proceso de `Settlement` se activa cuando un partido acaba (`MatchFinished`) o
 ## Escenarios ATAM 3 y 5
 
 _Pendiente._
+
+## Correcciones e Integración (Frontend)
+
+Durante la integración con el Frontend, se implementaron los siguientes ajustes:
+* **Enrutamiento:** Se removió el prefijo redundante `/api/v1/` en los métodos de registro de rutas de `wallet`, `betting` y `settlement`, ya que el prefijo ya está inyectado por el enrutador principal en `main.go`.
+* **Creación Automática de Billetera:** Si un usuario recién creado (como el admin o un usuario que todavía no ha depositado) intenta consultar su billetera en `GET /wallet` y no existe, se crea automáticamente con saldo inicial de `0` en vez de arrojar un error HTTP 500.
+* **Historial de Transacciones Vacío:** Se corrigió el valor de retorno en `GET /wallet/transactions` para que devuelva un array vacío (`[]`) en lugar de `null` en caso de que no haya transacciones.
+* **Consulta de Apuestas (`GET /bets`):** Se añadió el endpoint `GET /bets` y su handler correspondiente para devolver el historial de apuestas del usuario, permitiendo al frontend listarlas.

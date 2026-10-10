@@ -119,7 +119,11 @@ func (s *walletService) Balance(ctx context.Context, userID string) (money.Money
 	err := s.pool.QueryRow(ctx, "SELECT balance_cents FROM wallets WHERE user_id = $1", userID).Scan(&balance)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, errors.New("wallet: user not found")
+			// Crear billetera al vuelo si no existe
+			if createErr := s.CreateWallet(ctx, s.pool, userID, 0); createErr != nil {
+				return 0, fmt.Errorf("wallet: create on the fly: %w", createErr)
+			}
+			return 0, nil
 		}
 		return 0, fmt.Errorf("wallet: balance: %w", err)
 	}

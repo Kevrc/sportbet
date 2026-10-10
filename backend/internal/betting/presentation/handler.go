@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"sportbet/internal/betting/application"
 	"sportbet/internal/betting/domain"
@@ -15,16 +16,17 @@ import (
 // BettingHandler expone la API REST para el módulo de apuestas.
 type BettingHandler struct {
 	useCase *application.PlaceBetUseCase
+	pool    *pgxpool.Pool
 }
 
-func NewBettingHandler(useCase *application.PlaceBetUseCase) *BettingHandler {
-	return &BettingHandler{useCase: useCase}
+func NewBettingHandler(useCase *application.PlaceBetUseCase, pool *pgxpool.Pool) *BettingHandler {
+	return &BettingHandler{useCase: useCase, pool: pool}
 }
 
 // RegisterRoutes vincula los endpoints del módulo al router global.
 func (h *BettingHandler) RegisterRoutes(r chi.Router, auth contracts.Authenticator) {
-	r.With(auth.RequireAuth).Post("/api/v1/bets", h.PlaceBet)
-	// r.With(auth.RequireAuth).Get("/api/v1/bets/{id}", h.GetBet) // TODO: Implementar consulta simple
+	r.With(auth.RequireAuth).Post("/bets", h.PlaceBet)
+	r.With(auth.RequireAuth).Get("/bets", h.ListBets)
 }
 
 type placeBetRequest struct {
@@ -82,5 +84,53 @@ func (h *BettingHandler) PlaceBet(w http.ResponseWriter, r *http.Request) {
 		ID:                   res.BetID,
 		TotalOddX100:         int64(res.TotalOdd),
 		PotentialPayoutCents: res.PotentialPayout.Cents(),
+	})
+}
+
+// ListBets devuelve el historial de apuestas del usuario.
+func (h *BettingHandler) ListBets(w http.ResponseWriter, r *http.Request) {
+	u := contracts.MustCurrentUser(r.Context())
+	page := httpx.ParsePage(r)
+
+	rows, err := h.pool.Query(r.Context(), `
+		SELECT id, stake_cents, total_odd_x100, potential_payout_cents, status, payout_cents, created_at
+		FROM bets
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
+	`, u.ID, page.PageSize, page.Offset())
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	defer rows.Close()
+
+	type betResponse struct {
+		ID                   string      `json:"id"`
+		StakeCents           int64       `json:"stakeCents"`
+		TotalOddX100         int64       `json:"totalOddX100"`
+		PotentialPayoutCents int64       `json:"potentialPayoutCents"`
+		Status               string      `json:"status"`
+		PayoutCents          int64       `json:"payoutCents"`
+		CreatedAt            interface{} `json:"createdAt"`
+	}
+
+	items := make([]betResponse, 0)
+	for rows.Next() {
+		var item betResponse
+		if err := rows.Scan(&item.ID, &item.StakeCents, &item.TotalOddX100, &item.PotentialPayoutCents, &item.Status, &item.PayoutCents, &item.CreatedAt); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"items": items,
 	})
 }

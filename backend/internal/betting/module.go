@@ -15,6 +15,6 @@ func Register(r chi.Router, d app.Deps) {
 	repo := infrastructure.NewRepository()
 	useCase := application.NewPlaceBetUseCase(d.DB, d.Markets, d.Wallet, repo, d.Clock)
 	
-	h := presentation.NewBettingHandler(useCase)
+	h := presentation.NewBettingHandler(useCase, d.DB)
 	h.RegisterRoutes(r, d.Auth)
 }

@@ -20,8 +20,8 @@ func NewWalletHandler(service contracts.WalletService, pool *pgxpool.Pool) *Wall
 }
 
 func (h *WalletHandler) RegisterRoutes(r chi.Router, auth contracts.Authenticator) {
-	r.With(auth.RequireAuth).Get("/api/v1/wallet", h.GetWallet)
-	r.With(auth.RequireAuth).Get("/api/v1/wallet/transactions", h.ListTransactions)
+	r.With(auth.RequireAuth).Get("/wallet", h.GetWallet)
+	r.With(auth.RequireAuth).Get("/wallet/transactions", h.ListTransactions)
 }
 
 // GetWallet devuelve el saldo actual del usuario.
@@ -67,7 +67,7 @@ func (h *WalletHandler) ListTransactions(w http.ResponseWriter, r *http.Request)
 		Reference         string      `json:"reference"`
 		CreatedAt         interface{} `json:"createdAt"`
 	}
-	var items []tx
+	items := make([]tx, 0)
 	for rows.Next() {
 		var item tx
 		if err := rows.Scan(&item.ID, &item.Type, &item.AmountCents, &item.BalanceAfterCents, &item.Reference, &item.CreatedAt); err != nil {
