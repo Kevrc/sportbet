@@ -106,3 +106,9 @@ func TestAPIFootballReturnsErrorForProviderQuota(t *testing.T) {
 		t.Fatal("se ocultó el límite de cuota del proveedor")
 	}
 }
+
+func TestAPIFootballRejectsInsecureRemoteURL(t *testing.T) {
+	if _, err := NewAPIFootball("http://api.example.test", "test-key", nil); err == nil {
+		t.Fatal("se permitió transmitir la clave por HTTP remoto")
+	}
+}

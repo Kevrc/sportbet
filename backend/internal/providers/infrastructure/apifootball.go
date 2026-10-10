@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -22,8 +23,11 @@ type APIFootball struct {
 
 func NewAPIFootball(baseURL, key string, client *http.Client) (*APIFootball, error) {
 	parsed, err := url.Parse(baseURL)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil {
 		return nil, errs.New(errs.ErrValidation, "INVALID_PROVIDER_URL", "la URL de API-Football debe ser HTTP o HTTPS")
+	}
+	if parsed.Scheme == "http" && parsed.Hostname() != "localhost" && !isLoopback(parsed.Hostname()) {
+		return nil, errs.New(errs.ErrValidation, "INSECURE_PROVIDER_URL", "API-Football requiere HTTPS fuera de loopback")
 	}
 	if strings.TrimSpace(key) == "" {
 		return nil, errs.New(errs.ErrValidation, "MISSING_PROVIDER_KEY", "falta la clave de API-Football")
@@ -32,6 +36,11 @@ func NewAPIFootball(baseURL, key string, client *http.Client) (*APIFootball, err
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
 	return &APIFootball{baseURL: parsed, key: key, client: client}, nil
+}
+
+func isLoopback(host string) bool {
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func (p *APIFootball) Name() string { return "apifootball" }
