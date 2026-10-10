@@ -164,6 +164,9 @@ func convertFixture(item apiFixture, useFulltime bool) (contracts.ProviderFixtur
 	} else if item.Score.Fulltime.Home != nil && item.Score.Fulltime.Away != nil {
 		fixture.HomeScore, fixture.AwayScore = item.Score.Fulltime.Home, item.Score.Fulltime.Away
 	}
+	if fixture.Status == contracts.MatchFinished && (fixture.HomeScore == nil || fixture.AwayScore == nil) {
+		return contracts.ProviderFixture{}, errs.New(errs.ErrProviderUnavailable, "PROVIDER_RESULT_MISSING", "API-Football no entregó el marcador de tiempo reglamentario")
+	}
 	return fixture, nil
 }
 
