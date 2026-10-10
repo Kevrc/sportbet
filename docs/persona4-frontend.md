@@ -186,7 +186,6 @@ Estas pantallas pertenecen a la Persona 1 y se documentan en su archivo; aquí s
 
 SportBet es una plataforma de **apuestas simuladas con saldo virtual**: no se usa dinero real. Funciona en el navegador, en computador y en celular.
 
-> **Capturas pendientes:** las imágenes de cada pantalla se agregan al ejecutar las pruebas manuales; los marcadores `[Captura: …]` indican cuál va en cada lugar.
 
 ### 1. Crear una cuenta e iniciar sesión
 
@@ -196,7 +195,6 @@ SportBet es una plataforma de **apuestas simuladas con saldo virtual**: no se us
 
 Para salir, pulsa **Salir** en la barra superior.
 
-`[Captura: pantalla de registro]` `[Captura: barra superior con sesión iniciada]`
 
 ### 2. Ver los eventos
 
@@ -207,7 +205,6 @@ La pantalla **Eventos** muestra los partidos agrupados por liga.
 - **Actualizar** vuelve a pedir la lista.
 - Si ves "Sin conexión en tiempo real", los marcadores pueden no estar al día; se actualizan solos cuando vuelva la conexión.
 
-`[Captura: lista de eventos con filtros]`
 
 ### 3. Ver los mercados de un partido
 
@@ -221,8 +218,6 @@ Pulsa un partido para abrir su detalle. Verás hasta tres mercados:
 
 La **cuota** es lo que recibes por cada 1.00 apostado si aciertas: con cuota 2.14 y un monto de 10.00, el pago es 21.40. Cada mercado se cierra poco antes de que empiece el partido: no hay apuestas en vivo. Un mercado cerrado se ve deshabilitado y dice el motivo.
 
-`[Captura: detalle del evento con mercados]`
-
 ### 4. Armar el boleto
 
 1. Toca una cuota: se añade al **Boleto** (a la derecha, o debajo en el celular) y se resalta.
@@ -235,7 +230,6 @@ Reglas:
 - Si eliges otra opción del mismo mercado, reemplaza a la anterior.
 - La cuota total tiene un máximo de 500.00 y el pago potencial, de 10 000.00.
 
-`[Captura: boleto con una combinada]`
 
 ### 5. Apostar
 
@@ -244,7 +238,6 @@ Reglas:
 3. Pulsa **Apostar**. Si no has iniciado sesión, el botón te lleva a hacerlo y tu boleto se conserva.
 4. Verás "¡Apuesta realizada!" con el resumen. Tu saldo se actualiza.
 
-`[Captura: confirmación de apuesta]`
 
 ### 6. Avisos que puedes ver al apostar
 
@@ -271,13 +264,10 @@ Reglas:
 
 Filtra por estado con el selector y usa **Actualizar** para volver a pedir la lista.
 
-`[Captura: historial de apuestas]`
 
 ### 8. Tu billetera
 
 **Billetera** muestra el **saldo disponible** y la lista de **movimientos**: saldo inicial, apuestas (resta), premios y reembolsos (suma) y ajustes del administrador. Cada movimiento indica el monto con su signo y el saldo que quedó después.
-
-`[Captura: billetera con movimientos]`
 
 ### 9. Preguntas frecuentes
 
