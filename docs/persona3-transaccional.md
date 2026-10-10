@@ -6,6 +6,7 @@
 
 * **Wallet:** Billetera de saldo de los usuarios usando enteros de 64 bits para manejar centavos exactos (`money.Money`). Todos los abonos y retiros quedan registrados en `wallet_transactions` de manera obligatoria y consistente.
 * **Betting:** Administra las apuestas de los usuarios validando cuotas, reglas de negocio (sin correlación, rangos permitidos) usando `money.Odds`. Mantiene los comprobantes y selecciones.
+* **Settlement:** Proceso orquestador que lee resultados de mercado, re-evalúa apuestas pendientes y emite pagos.
 
 ## Flujo de apuesta (débito atómico, idempotencia)
 
@@ -18,7 +19,12 @@ El proceso de colocación de apuestas se divide de la siguiente forma:
 
 ## Flujo de liquidación (WIN/LOSS/VOID, combinadas)
 
-_Pendiente (módulo settlement)._
+El proceso de `Settlement` se activa cuando un partido acaba (`MatchFinished`) o mediante el Sweep (barrido). Funciona así:
+1. Pide al `ResultReader` la resolución de todas las selecciones del partido.
+2. Actualiza el resultado individual (`WON`, `LOST`, `VOID`) de manera masiva en todos los detalles (`bet_selections`) donde están pendientes.
+3. Encuentra todas las apuestas afectadas y las re-evalúa individualmente en transacciones separadas.
+4. Si la apuesta tiene alguna selección LOST, pierde. Si sigue con alguna PENDING, espera. Si todas VOID, se reembolsa (`BET_REFUND`). Caso contrario, gana (`BET_PAYOUT`).
+5. En la misma transacción donde actualiza el estado de la apuesta a terminal, hace `wallet.Credit`, impidiendo inconsistencias.
 
 ## Escenarios ATAM 3 y 5
 
