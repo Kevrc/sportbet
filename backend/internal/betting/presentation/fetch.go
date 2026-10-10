@@ -37,10 +37,10 @@ func fetchBetComplete(ctx context.Context, pool *pgxpool.Pool, betID string, use
 				(SELECT json_agg(json_build_object(
 					'selectionId', bs.selection_id,
 					'eventId', bs.event_id,
-					'eventName', e.name,
+					'eventName', ht.name || ' vs ' || at.name,
 					'marketCode', m.code,
 					'selectionCode', s.code,
-					'label', s.name,
+					'label', s.label,
 					'oddX100', bs.odd_x100,
 					'result', bs.result
 				)) 
@@ -48,6 +48,8 @@ func fetchBetComplete(ctx context.Context, pool *pgxpool.Pool, betID string, use
 				JOIN selections s ON bs.selection_id = s.id
 				JOIN markets m ON s.market_id = m.id
 				JOIN events e ON bs.event_id = e.id
+				JOIN teams ht ON e.home_team_id = ht.id
+				JOIN teams at ON e.away_team_id = at.id
 				WHERE bs.bet_id = b.id), '[]'::json
 			) as selections
 		FROM bets b
