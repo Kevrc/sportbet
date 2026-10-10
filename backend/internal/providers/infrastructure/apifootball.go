@@ -147,10 +147,20 @@ func (p *APIFootball) get(ctx context.Context, endpoint string, query url.Values
 	if err := json.NewDecoder(response.Body).Decode(target); err != nil {
 		return errs.Wrap(errs.ErrProviderUnavailable, err, "PROVIDER_INVALID_RESPONSE", "API-Football devolvió JSON inválido")
 	}
-	if len(target.Errors) > 0 {
-		return errs.New(errs.ErrProviderUnavailable, "PROVIDER_API_ERROR", "API-Football informó un error en la consulta")
+	if hasAPIErrors(target.Errors) {
+		return errs.New(errs.ErrProviderUnavailable, "PROVIDER_API_ERROR",
+			"API-Football informó un error en la consulta: "+string(target.Errors))
 	}
 	return nil
+}
+
+// hasAPIErrors es falso para ausente, null, [] y {}.
+func hasAPIErrors(raw json.RawMessage) bool {
+	switch strings.TrimSpace(string(raw)) {
+	case "", "null", "[]", "{}":
+		return false
+	}
+	return true
 }
 
 func convertFixture(item apiFixture, useFulltime bool) (contracts.ProviderFixture, error) {
@@ -180,8 +190,10 @@ func convertFixture(item apiFixture, useFulltime bool) (contracts.ProviderFixtur
 }
 
 type apiResponse struct {
-	Errors   map[string]json.RawMessage `json:"errors"`
-	Response []apiFixture               `json:"response"`
+	// API-Football manda "errors": [] cuando todo salió bien y un objeto
+	// {"campo": "mensaje"} cuando hay errores; RawMessage acepta ambos.
+	Errors   json.RawMessage `json:"errors"`
+	Response []apiFixture    `json:"response"`
 }
 
 type apiFixture struct {

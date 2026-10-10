@@ -141,3 +141,32 @@ func TestAPIFootballRejectsInsecureRemoteURL(t *testing.T) {
 		t.Fatal("se permitió transmitir la clave por HTTP remoto")
 	}
 }
+
+// La API real manda "errors": [] cuando la consulta salió bien y un objeto
+// cuando falla (por ejemplo, una fecha fuera del plan gratuito).
+func TestAPIFootballErrorsFieldFormats(t *testing.T) {
+	cases := []struct {
+		name, errors string
+		wantErr      bool
+	}{
+		{"lista vacía (respuesta real correcta)", `[]`, false},
+		{"objeto vacío", `{}`, false},
+		{"objeto con error del plan", `{"plan":"Free plans do not have access to this date"}`, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte(`{"errors":` + c.errors + `,"results":0,"response":[]}`))
+			}))
+			defer server.Close()
+			provider, err := NewAPIFootball(server.URL, "test-key", server.Client())
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = provider.FixturesByDate(context.Background(), time.Now(), nil)
+			if (err != nil) != c.wantErr {
+				t.Fatalf("err = %v; wantErr = %v", err, c.wantErr)
+			}
+		})
+	}
+}
