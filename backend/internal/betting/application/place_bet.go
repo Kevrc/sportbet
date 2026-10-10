@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	MinStakeCents      int64 = 100
-	MaxStakeCents      int64 = 50000
-	MaxPayoutCents     int64 = 1000000
-	MaxTotalOdd        int64 = 50000
+	MinStakeCents  int64 = 100
+	MaxStakeCents  int64 = 50000
+	MaxPayoutCents int64 = 1000000
+	MaxTotalOdd    int64 = 50000
 )
 
 type PlaceBetCommand struct {

@@ -40,9 +40,9 @@ type placeBetRequest struct {
 }
 
 type placeBetResponse struct {
-	ID                     string `json:"id"`
-	TotalOddX100           int64  `json:"totalOddX100"`
-	PotentialPayoutCents   int64  `json:"potentialPayoutCents"`
+	ID                   string `json:"id"`
+	TotalOddX100         int64  `json:"totalOddX100"`
+	PotentialPayoutCents int64  `json:"potentialPayoutCents"`
 }
 
 // PlaceBet procesa la solicitud del usuario para colocar una apuesta.

@@ -16,6 +16,7 @@ import (
 type mockMarket struct {
 	selections map[string]contracts.SelectionInfo
 }
+
 func (m *mockMarket) GetSelections(ctx context.Context, ids []string) (map[string]contracts.SelectionInfo, error) {
 	res := make(map[string]contracts.SelectionInfo)
 	for _, id := range ids {
@@ -27,12 +28,22 @@ func (m *mockMarket) GetSelections(ctx context.Context, ids []string) (map[strin
 }
 
 type mockWallet struct{}
-func (m *mockWallet) CreateWallet(ctx context.Context, q db.Querier, userID string, initial money.Money) error { return nil }
-func (m *mockWallet) Debit(ctx context.Context, q db.Querier, userID string, amt money.Money, ref contracts.TxRef) (money.Money, error) { return money.FromCents(0), nil }
-func (m *mockWallet) Credit(ctx context.Context, q db.Querier, userID string, amt money.Money, ref contracts.TxRef) (money.Money, error) { return money.FromCents(0), nil }
-func (m *mockWallet) Balance(ctx context.Context, userID string) (money.Money, error) { return money.FromCents(0), nil }
+
+func (m *mockWallet) CreateWallet(ctx context.Context, q db.Querier, userID string, initial money.Money) error {
+	return nil
+}
+func (m *mockWallet) Debit(ctx context.Context, q db.Querier, userID string, amt money.Money, ref contracts.TxRef) (money.Money, error) {
+	return money.FromCents(0), nil
+}
+func (m *mockWallet) Credit(ctx context.Context, q db.Querier, userID string, amt money.Money, ref contracts.TxRef) (money.Money, error) {
+	return money.FromCents(0), nil
+}
+func (m *mockWallet) Balance(ctx context.Context, userID string) (money.Money, error) {
+	return money.FromCents(0), nil
+}
 
 type mockRepo struct{}
+
 func (m *mockRepo) InsertBet(ctx context.Context, q db.Querier, bet *domain.Bet, selections []domain.BetSelection) (string, error) {
 	return "bet-123", nil
 }

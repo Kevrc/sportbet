@@ -2,8 +2,8 @@ package infrastructure_test
 
 import (
 	"context"
-	"testing"
 	"os"
+	"testing"
 
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/contracts/contracttest"
