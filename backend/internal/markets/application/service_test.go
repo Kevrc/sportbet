@@ -2,10 +2,12 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"sportbet/internal/shared/contracts"
+	"sportbet/internal/shared/errs"
 )
 
 type repositoryStub struct {
@@ -41,7 +43,7 @@ func (r *repositoryStub) ListEventSelections(context.Context, string) ([]Selecti
 
 func TestResolveSelectionsVoidsCancelledEvent(t *testing.T) {
 	service := NewService(&repositoryStub{}, 6)
-	outcomes, err := service.ResolveSelections(context.Background(), "event-1")
+	outcomes, err := service.ResolveSelections(context.Background(), "00000000-0000-0000-0000-000000000001")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,6 +55,14 @@ func TestResolveSelectionsVoidsCancelledEvent(t *testing.T) {
 func TestCloseMarketsForEvent(t *testing.T) {
 	repository := &repositoryStub{}
 	if err := NewService(repository, 6).CloseMarketsForEvent(context.Background(), "event-1"); err != nil {
+		if !errors.Is(err, errs.ErrValidation) {
+			t.Fatalf("error = %v, quiere validación", err)
+		}
+	}
+	if repository.closed {
+		t.Fatal("se solicitó cerrar un ID inválido")
+	}
+	if err := NewService(repository, 6).CloseMarketsForEvent(context.Background(), "00000000-0000-0000-0000-000000000001"); err != nil {
 		t.Fatal(err)
 	}
 	if !repository.closed {

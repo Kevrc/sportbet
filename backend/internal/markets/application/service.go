@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"sportbet/internal/markets/domain"
@@ -47,20 +48,22 @@ type Service struct {
 	oneXTwoMargin int
 }
 
+var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
 func NewService(repository Repository, oneXTwoMargin int) *Service {
 	return &Service{repository: repository, oneXTwoMargin: oneXTwoMargin}
 }
 
 func (s *Service) ListEventMarkets(ctx context.Context, eventID string) ([]Market, error) {
-	if eventID == "" {
-		return nil, errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento es obligatorio")
+	if !uuidPattern.MatchString(eventID) {
+		return nil, errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento debe ser un UUID")
 	}
 	return s.repository.ListEventMarkets(ctx, eventID)
 }
 
 func (s *Service) EnsureMarkets(ctx context.Context, eventID string) error {
-	if eventID == "" {
-		return errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento es obligatorio")
+	if !uuidPattern.MatchString(eventID) {
+		return errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento debe ser un UUID")
 	}
 	if s.oneXTwoMargin < 0 || s.oneXTwoMargin >= 100 {
 		return errs.New(errs.ErrValidation, "INVALID_ODDS_MARGIN", "el margen de cuotas 1X2 debe estar entre 0 y 99")
@@ -76,8 +79,8 @@ func (s *Service) EnsureUpcomingMarkets(ctx context.Context, now time.Time) erro
 }
 
 func (s *Service) CloseMarketsForEvent(ctx context.Context, eventID string) error {
-	if eventID == "" {
-		return errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento es obligatorio")
+	if !uuidPattern.MatchString(eventID) {
+		return errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento debe ser un UUID")
 	}
 	return s.repository.CloseMarketsForEvent(ctx, eventID)
 }
@@ -90,12 +93,17 @@ func (s *Service) GetSelections(ctx context.Context, ids []string) (map[string]c
 	if len(ids) == 0 {
 		return map[string]contracts.SelectionInfo{}, nil
 	}
+	for _, id := range ids {
+		if !uuidPattern.MatchString(id) {
+			return nil, errs.New(errs.ErrValidation, "INVALID_SELECTION_ID", "el ID de selección debe ser un UUID")
+		}
+	}
 	return s.repository.GetSelections(ctx, ids)
 }
 
 func (s *Service) GetResult(ctx context.Context, eventID string) (contracts.EventResult, error) {
-	if eventID == "" {
-		return contracts.EventResult{}, errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento es obligatorio")
+	if !uuidPattern.MatchString(eventID) {
+		return contracts.EventResult{}, errs.New(errs.ErrValidation, "INVALID_EVENT_ID", "el ID del evento debe ser un UUID")
 	}
 	return s.repository.GetEventResult(ctx, eventID)
 }
