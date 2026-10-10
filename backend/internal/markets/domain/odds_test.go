@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"math"
 	"testing"
 
 	"sportbet/internal/shared/contracts"
@@ -37,5 +38,17 @@ func TestResolveSelection(t *testing.T) {
 		if err != nil || got != tt.want {
 			t.Errorf("ResolveSelection(%q, %q) = %q, %v; quiere %q", tt.code, tt.status, got, err, tt.want)
 		}
+	}
+}
+
+func TestCalculateOddsRejectsNonFiniteStrength(t *testing.T) {
+	if _, err := CalculateOdds(math.NaN(), 1, 6); err == nil {
+		t.Fatal("se aceptó una fuerza de equipo NaN")
+	}
+}
+
+func TestResolveSelectionRejectsUnknownCodeForVoidedEvent(t *testing.T) {
+	if _, err := ResolveSelection("UNKNOWN", contracts.MatchCancelled, 0, 0); err == nil {
+		t.Fatal("se aceptó un código desconocido para un evento anulado")
 	}
 }
