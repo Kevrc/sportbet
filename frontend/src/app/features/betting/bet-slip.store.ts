@@ -37,7 +37,15 @@ export interface SlipSelection extends SlipPick {
 
 export type PickResult = 'added' | 'removed' | 'replaced' | 'same-event' | 'full';
 
-export type PlaceResult = { kind: 'success'; bet: Bet } | { kind: 'error'; failure: BetFailure };
+/** Resumen de la apuesta hecha. Usa lo que devolvió el servidor y, si falta, lo que se envió. */
+export interface BetSummary {
+  stakeCents: number;
+  totalOddX100: number;
+  potentialPayoutCents: number;
+}
+
+export type PlaceResult =
+  { kind: 'success'; bet: Bet; summary: BetSummary } | { kind: 'error'; failure: BetFailure };
 
 function newIdempotencyKey(): string {
   return (
@@ -177,6 +185,8 @@ export class BetSlipStore {
   place(): void {
     if (!this.canPlace()) return;
     const stakeCents = this.stakeCents()!;
+    const sentTotal = this.totalOddX100();
+    const sentPayout = potentialPayoutCents(stakeCents, sentTotal);
     this._placing.set(true); // síncrono: un segundo clic ya no pasa canPlace()
     this._result.set(null);
     this.idempotencyKey ??= newIdempotencyKey();
@@ -199,7 +209,15 @@ export class BetSlipStore {
           this._selections.set([]);
           this._notice.set(null);
           this.idempotencyKey = null;
-          this._result.set({ kind: 'success', bet });
+          this._result.set({
+            kind: 'success',
+            bet,
+            summary: {
+              stakeCents: bet.stakeCents ?? stakeCents,
+              totalOddX100: bet.totalOddX100 ?? sentTotal,
+              potentialPayoutCents: bet.potentialPayoutCents ?? sentPayout,
+            },
+          });
           this.wallet.refresh();
         },
         error: (err: unknown) => this.onPlaceError(describeBetError(err)),

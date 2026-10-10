@@ -318,4 +318,20 @@ describe('BetSlipComponent', () => {
     expect(navigated[0][0]).toEqual(['/auth/login']);
     expect(slip.count()).toBe(1);
   });
+
+  it('si el servidor devuelve la apuesta incompleta, la confirmación no muestra NaN', async () => {
+    const partial = { id: 'b9', totalOddX100: 214, potentialPayoutCents: 2140 } as Bet;
+    const { fixture, el, slip } = setup({ place: () => of(partial) });
+    slip.toggle(pick(1));
+    await settle(fixture);
+    type(el, '10');
+    await settle(fixture);
+    placeButton(el).click();
+    await settle(fixture);
+    expect(text(el)).toContain('¡Apuesta realizada!');
+    expect(text(el)).not.toContain('NaN');
+    expect(text(el)).toMatch(/Monto\s*10\.00/);
+    expect(text(el)).toMatch(/Cuota total\s*2\.14/);
+    expect(text(el)).toMatch(/Pago potencial\s*21\.40/);
+  });
 });

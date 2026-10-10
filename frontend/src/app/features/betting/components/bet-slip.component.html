@@ -25,15 +25,15 @@
         <dl>
           <div>
             <dt>Monto</dt>
-            <dd>{{ money(r.bet.stakeCents) }}</dd>
+            <dd>{{ money(r.summary.stakeCents) }}</dd>
           </div>
           <div>
             <dt>Cuota total</dt>
-            <dd>{{ odd(r.bet.totalOddX100) }}</dd>
+            <dd>{{ odd(r.summary.totalOddX100) }}</dd>
           </div>
           <div>
             <dt>Pago potencial</dt>
-            <dd>{{ money(r.bet.potentialPayoutCents) }}</dd>
+            <dd>{{ money(r.summary.potentialPayoutCents) }}</dd>
           </div>
         </dl>
         <div class="actions">

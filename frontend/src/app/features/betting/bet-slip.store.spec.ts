@@ -209,9 +209,32 @@ describe('BetSlipStore · apostar', () => {
         { selectionId: 's2', oddX100: 197 },
       ],
     });
-    expect(store.result()).toEqual({ kind: 'success', bet: bet() });
+    expect(store.result()).toMatchObject({ kind: 'success', bet: bet() });
     expect([store.count(), store.stakeText(), store.placing()]).toEqual([0, '', false]);
     expect(wallet.refreshed).toBe(1);
+  });
+
+  it('si el servidor devuelve la apuesta incompleta, el resumen usa lo que se envió', () => {
+    const partial = { id: 'b9', totalOddX100: 214, potentialPayoutCents: 2140 } as Bet;
+    const { store } = setup({ place: () => of(partial) });
+    store.toggle(pick(1, { oddX100: 214 }));
+    store.setStake('10');
+    store.place();
+    expect(store.result()).toMatchObject({
+      kind: 'success',
+      summary: { stakeCents: 1000, totalOddX100: 214, potentialPayoutCents: 2140 },
+    });
+  });
+
+  it('si el servidor no devuelve cuota ni pago, los calcula con lo enviado', () => {
+    const { store } = setup({ place: () => of({ id: 'b8' } as Bet) });
+    store.toggle(pick(1, { oddX100: 214 }));
+    store.toggle(pick(2, { oddX100: 197 }));
+    store.setStake('10');
+    store.place();
+    expect(store.result()).toMatchObject({
+      summary: { stakeCents: 1000, totalOddX100: 421, potentialPayoutCents: 4210 },
+    });
   });
 
   it('no envía si el boleto no es válido', () => {
