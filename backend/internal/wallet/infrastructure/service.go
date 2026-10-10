@@ -71,10 +71,10 @@ func (s *walletService) Debit(ctx context.Context, q db.Querier, userID string, 
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, errs.ErrInsufficientFunds
+			return 0, errs.New(errs.ErrInsufficientFunds, "INSUFFICIENT_FUNDS", "saldo insuficiente")
 		}
 		if db.IsUniqueViolation(err, "wallet_transactions_reference_type_key") {
-			return 0, errs.ErrAlreadyProcessed
+			return 0, errs.New(errs.ErrAlreadyProcessed, "ALREADY_PROCESSED", "transacción duplicada")
 		}
 		return 0, fmt.Errorf("wallet: debit: %w", err)
 	}
@@ -106,7 +106,7 @@ func (s *walletService) Credit(ctx context.Context, q db.Querier, userID string,
 			return 0, errors.New("wallet: user not found")
 		}
 		if db.IsUniqueViolation(err, "wallet_transactions_reference_type_key") {
-			return 0, errs.ErrAlreadyProcessed
+			return 0, errs.New(errs.ErrAlreadyProcessed, "ALREADY_PROCESSED", "transacción duplicada")
 		}
 		return 0, fmt.Errorf("wallet: credit: %w", err)
 	}

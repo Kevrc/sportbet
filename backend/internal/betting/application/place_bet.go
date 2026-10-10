@@ -10,6 +10,7 @@ import (
 	"sportbet/internal/betting/domain"
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/db"
+	"sportbet/internal/shared/errs"
 	"sportbet/internal/shared/money"
 )
 
@@ -112,7 +113,7 @@ func (uc *PlaceBetUseCase) Execute(ctx context.Context, cmd PlaceBetCommand) (Pl
 	}
 
 	if len(changed) > 0 {
-		return PlaceBetResult{ChangedOdds: changed}, domain.ErrOddsChanged
+		return PlaceBetResult{ChangedOdds: changed}, errs.New(errs.ErrOddsChanged, "ODDS_CHANGED", "La cuota de una o más selecciones ha cambiado")
 	}
 
 	totalOdd := money.Combine(oddsToCombine...)

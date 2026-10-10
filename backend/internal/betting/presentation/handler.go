@@ -1,6 +1,7 @@
 package presentation
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -9,6 +10,7 @@ import (
 	"sportbet/internal/betting/application"
 	"sportbet/internal/betting/domain"
 	"sportbet/internal/shared/contracts"
+	"sportbet/internal/shared/errs"
 	"sportbet/internal/shared/httpx"
 	"sportbet/internal/shared/money"
 )
@@ -76,15 +78,26 @@ func (h *BettingHandler) PlaceBet(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.useCase.Execute(r.Context(), cmd)
 	if err != nil {
+		if errors.Is(err, errs.ErrAlreadyProcessed) {
+			bet, fetchErr := fetchBetByIdempotencyKey(r.Context(), h.pool, idemKey, u.ID)
+			if fetchErr != nil {
+				httpx.WriteError(w, r, fetchErr)
+				return
+			}
+			httpx.WriteJSON(w, http.StatusOK, bet)
+			return
+		}
 		httpx.WriteError(w, r, err)
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, placeBetResponse{
-		ID:                   res.BetID,
-		TotalOddX100:         int64(res.TotalOdd),
-		PotentialPayoutCents: res.PotentialPayout.Cents(),
-	})
+	bet, fetchErr := fetchBetComplete(r.Context(), h.pool, res.BetID, u.ID)
+	if fetchErr != nil {
+		httpx.WriteError(w, r, fetchErr)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusCreated, bet)
 }
 
 // ListBets devuelve el historial de apuestas del usuario.
@@ -92,11 +105,35 @@ func (h *BettingHandler) ListBets(w http.ResponseWriter, r *http.Request) {
 	u := contracts.MustCurrentUser(r.Context())
 	page := httpx.ParsePage(r)
 
+	var total int
+	if err := h.pool.QueryRow(r.Context(), "SELECT count(*) FROM bets WHERE user_id = $1", u.ID).Scan(&total); err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
 	rows, err := h.pool.Query(r.Context(), `
-		SELECT id, stake_cents, total_odd_x100, potential_payout_cents, status, payout_cents, created_at
-		FROM bets
-		WHERE user_id = $1
-		ORDER BY created_at DESC
+		SELECT 
+			b.id, b.stake_cents, b.total_odd_x100, b.potential_payout_cents, b.status, b.payout_cents, b.placed_at,
+			COALESCE(
+				(SELECT json_agg(json_build_object(
+					'selectionId', bs.selection_id,
+					'eventId', bs.event_id,
+					'eventName', e.name,
+					'marketCode', m.code,
+					'selectionCode', s.code,
+					'label', s.name,
+					'oddX100', bs.odd_x100,
+					'result', bs.result
+				)) 
+				FROM bet_selections bs 
+				JOIN selections s ON bs.selection_id = s.id
+				JOIN markets m ON s.market_id = m.id
+				JOIN events e ON bs.event_id = e.id
+				WHERE bs.bet_id = b.id), '[]'::json
+			) as selections
+		FROM bets b
+		WHERE b.user_id = $1
+		ORDER BY b.placed_at DESC
 		LIMIT $2 OFFSET $3
 	`, u.ID, page.PageSize, page.Offset())
 	if err != nil {
@@ -105,20 +142,10 @@ func (h *BettingHandler) ListBets(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	type betResponse struct {
-		ID                   string      `json:"id"`
-		StakeCents           int64       `json:"stakeCents"`
-		TotalOddX100         int64       `json:"totalOddX100"`
-		PotentialPayoutCents int64       `json:"potentialPayoutCents"`
-		Status               string      `json:"status"`
-		PayoutCents          int64       `json:"payoutCents"`
-		CreatedAt            interface{} `json:"createdAt"`
-	}
-
 	items := make([]betResponse, 0)
 	for rows.Next() {
 		var item betResponse
-		if err := rows.Scan(&item.ID, &item.StakeCents, &item.TotalOddX100, &item.PotentialPayoutCents, &item.Status, &item.PayoutCents, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.StakeCents, &item.TotalOddX100, &item.PotentialPayoutCents, &item.Status, &item.PayoutCents, &item.PlacedAt, &item.Selections); err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
@@ -130,7 +157,10 @@ func (h *BettingHandler) ListBets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"items": items,
+	httpx.WriteJSON(w, http.StatusOK, httpx.Paged[betResponse]{
+		Items:    items,
+		Page:     page.Page,
+		PageSize: page.PageSize,
+		Total:    total,
 	})
 }

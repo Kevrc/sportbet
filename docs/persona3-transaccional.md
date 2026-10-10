@@ -37,3 +37,12 @@ Durante la integración con el Frontend, se implementaron los siguientes ajustes
 * **Creación Automática de Billetera:** Si un usuario recién creado (como el admin o un usuario que todavía no ha depositado) intenta consultar su billetera en `GET /wallet` y no existe, se crea automáticamente con saldo inicial de `0` en vez de arrojar un error HTTP 500.
 * **Historial de Transacciones Vacío:** Se corrigió el valor de retorno en `GET /wallet/transactions` para que devuelva un array vacío (`[]`) en lugar de `null` en caso de que no haya transacciones.
 * **Consulta de Apuestas (`GET /bets`):** Se añadió el endpoint `GET /bets` y su handler correspondiente para devolver el historial de apuestas del usuario, permitiendo al frontend listarlas.
+
+## Correcciones e Integración (Frontend) - Fase 2
+
+Luego del rebase y validaciones adicionales del Frontend, se corrigieron los siguientes puntos para ajustar el contrato REST `openapi.yaml`:
+* **Respuesta GET /bets y POST /bets:** Se ajustaron los handlers para retornar todos los campos requeridos en el contrato (`placedAt`, `selections` con la información del evento, etc.), utilizando una subconsulta `json_agg` directamente en PostgreSQL para recolectar las opciones y haciendo un `JOIN` a las tablas `selections`, `markets` y `events` a nivel base de datos.
+* **Reintento Idempotente:** Si se intenta crear una apuesta con el mismo `Idempotency-Key`, la API devuelve un código HTTP `200 OK` con la apuesta original recuperada desde la base de datos, manejando correctamente la violación del *Unique Constraint* devolviendo el error `errs.ErrAlreadyProcessed`.
+* **Manejo de Errores Específicos:** Se sustituyeron los errores base del dominio (como `ErrOddsChanged` o un genérico 500) por los errores estructurados definidos en `shared/errs` (como `INSUFFICIENT_FUNDS` o `ODDS_CHANGED`), lo que permite que el middleware responda con los códigos `422` o `409` adecuados.
+* **Billetera al vuelo:** Se mantiene la creación de billetera al vuelo con `0` de saldo cuando el usuario (como el administrador sembrado) no la tiene.
+* **Limpieza:** Se ha deshecho la edición accidental del contrato de tests de `wallet` para mantener las reglas de `AGENTS.md`, esto se mandará en un PR distinto si es necesario.

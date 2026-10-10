@@ -7,6 +7,7 @@ import (
 	"sportbet/internal/betting/application"
 	"sportbet/internal/betting/domain"
 	"sportbet/internal/shared/db"
+	"sportbet/internal/shared/errs"
 )
 
 type repository struct{}
@@ -25,7 +26,7 @@ func (r *repository) InsertBet(ctx context.Context, q db.Querier, bet *domain.Be
 
 	if err != nil {
 		if db.IsUniqueViolation(err, "bets_user_idempotency_key") {
-			return "", fmt.Errorf("idempotency violation: %w", err)
+			return "", errs.ErrAlreadyProcessed
 		}
 		return "", fmt.Errorf("insert bet: %w", err)
 	}
