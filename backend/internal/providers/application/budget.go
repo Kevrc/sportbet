@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"sportbet/internal/providers/domain"
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/errs"
 )
@@ -15,26 +16,23 @@ type UsageRepository interface {
 
 type Budget struct {
 	repository UsageRepository
-	dailyLimit int
-	reserve    int
+	policy     domain.DailyBudget
 	clock      func() time.Time
 }
 
 func NewBudget(repository UsageRepository, dailyLimit, reserve int, clock func() time.Time) (*Budget, error) {
-	if repository == nil || dailyLimit <= 0 || reserve < 0 || reserve >= dailyLimit {
+	policy, err := domain.NewDailyBudget(dailyLimit, reserve)
+	if repository == nil || err != nil {
 		return nil, errs.New(errs.ErrValidation, "INVALID_PROVIDER_BUDGET", "la configuración del presupuesto diario es inválida")
 	}
-	return &Budget{repository: repository, dailyLimit: dailyLimit, reserve: reserve, clock: clock}, nil
+	return &Budget{repository: repository, policy: policy, clock: clock}, nil
 }
 
-func (b *Budget) Allow(ctx context.Context, provider string, reserveProtected bool) error {
+func (b *Budget) Allow(ctx context.Context, provider string, kind domain.RequestKind) error {
 	if b.clock == nil {
 		return errs.New(errs.ErrValidation, "PROVIDER_CLOCK_REQUIRED", "el reloj del presupuesto diario no está configurado")
 	}
-	limit := b.dailyLimit
-	if reserveProtected {
-		limit -= b.reserve
-	}
+	limit := b.policy.Limit(kind)
 	if err := b.repository.Consume(ctx, provider, b.clock().UTC(), limit); err != nil {
 		return err
 	}
@@ -48,7 +46,7 @@ func (b *Budget) RequestsUsed(ctx context.Context, provider string) (int, error)
 	return b.repository.RequestsUsed(ctx, provider, b.clock().UTC())
 }
 
-func (b *Budget) DailyLimit() int { return b.dailyLimit }
+func (b *Budget) DailyLimit() int { return b.policy.TotalLimit() }
 
 func (b *Budget) SetClock(clock func() time.Time) {
 	if clock == nil {
@@ -84,7 +82,7 @@ func (p *BudgetedFixtures) StartReplay(path string, speed int, clock func() time
 
 func (p *BudgetedFixtures) FixturesByDate(ctx context.Context, date time.Time, leagueIDs []string) ([]contracts.ProviderFixture, error) {
 	if name := p.provider.Name(); name != "replay" && name != "unavailable" {
-		if err := p.budget.Allow(ctx, p.provider.Name(), true); err != nil {
+		if err := p.budget.Allow(ctx, name, domain.FixtureRequest); err != nil {
 			return nil, err
 		}
 	}
@@ -93,7 +91,7 @@ func (p *BudgetedFixtures) FixturesByDate(ctx context.Context, date time.Time, l
 
 func (p *BudgetedFixtures) FixtureResult(ctx context.Context, externalID string) (contracts.ProviderFixture, error) {
 	if name := p.provider.Name(); name != "replay" && name != "unavailable" {
-		if err := p.budget.Allow(ctx, p.provider.Name(), true); err != nil {
+		if err := p.budget.Allow(ctx, name, domain.FixtureRequest); err != nil {
 			return contracts.ProviderFixture{}, err
 		}
 	}
@@ -113,7 +111,7 @@ func (p *BudgetedLiveScores) Name() string { return p.provider.Name() }
 
 func (p *BudgetedLiveScores) LiveScores(ctx context.Context) ([]contracts.LiveScore, error) {
 	if name := p.provider.Name(); name != "replay" && name != "unavailable" {
-		if err := p.budget.Allow(ctx, p.provider.Name(), false); err != nil {
+		if err := p.budget.Allow(ctx, name, domain.LiveScoreRequest); err != nil {
 			return nil, err
 		}
 	}
