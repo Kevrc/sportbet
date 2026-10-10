@@ -2,16 +2,59 @@ package application_test
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"sportbet/internal/betting/application"
 	"sportbet/internal/betting/domain"
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/db"
 	"sportbet/internal/shared/money"
+	"sportbet/migrations"
 )
+
+func testPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	base := os.Getenv("TEST_DATABASE_URL")
+	if base == "" {
+		t.Skip("TEST_DATABASE_URL no definida")
+	}
+	ctx := context.Background()
+	admin, err := db.Connect(ctx, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := fmt.Sprintf("test_betting_%d", time.Now().UnixNano())
+	if _, err := admin.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = admin.Exec(context.Background(), "DROP SCHEMA "+schema+" CASCADE")
+		admin.Close()
+	})
+
+	u, err := url.Parse(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	qs := u.Query()
+	qs.Set("search_path", schema)
+	u.RawQuery = qs.Encode()
+	pool, err := db.Connect(ctx, u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if err := db.Migrate(ctx, pool, migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	return pool
+}
 
 type mockMarket struct {
 	selections map[string]contracts.SelectionInfo
@@ -49,15 +92,7 @@ func (m *mockRepo) InsertBet(ctx context.Context, q db.Querier, bet *domain.Bet,
 }
 
 func TestPlaceBet(t *testing.T) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://sportbet:sportbet@localhost:5432/sportbet?sslmode=disable"
-	}
-	pool, err := db.Connect(context.Background(), dsn)
-	if err != nil {
-		t.Fatalf("connect: %v", err)
-	}
-	defer pool.Close()
+	pool := testPool(t)
 
 	markets := &mockMarket{
 		selections: map[string]contracts.SelectionInfo{
@@ -96,15 +131,7 @@ func TestPlaceBet(t *testing.T) {
 }
 
 func TestPlaceBet_Correlated(t *testing.T) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://sportbet:sportbet@localhost:5432/sportbet?sslmode=disable"
-	}
-	pool, err := db.Connect(context.Background(), dsn)
-	if err != nil {
-		t.Fatalf("connect: %v", err)
-	}
-	defer pool.Close()
+	pool := testPool(t)
 
 	markets := &mockMarket{
 		selections: map[string]contracts.SelectionInfo{
@@ -117,7 +144,7 @@ func TestPlaceBet_Correlated(t *testing.T) {
 
 	uc := application.NewPlaceBetUseCase(pool, markets, wallet, repo, time.Now)
 
-	_, err = uc.Execute(context.Background(), application.PlaceBetCommand{
+	_, err := uc.Execute(context.Background(), application.PlaceBetCommand{
 		UserID:         "user-1",
 		IdempotencyKey: "idem-2",
 		Stake:          money.FromCents(1000),

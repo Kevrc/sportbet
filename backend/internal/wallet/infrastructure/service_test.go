@@ -2,27 +2,62 @@ package infrastructure_test
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"os"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/contracts/contracttest"
 	"sportbet/internal/shared/db"
 	"sportbet/internal/wallet/infrastructure"
+	"sportbet/migrations"
 )
+
+func testPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	base := os.Getenv("TEST_DATABASE_URL")
+	if base == "" {
+		t.Skip("TEST_DATABASE_URL no definida")
+	}
+	ctx := context.Background()
+	admin, err := db.Connect(ctx, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := fmt.Sprintf("test_wallet_%d", time.Now().UnixNano())
+	if _, err := admin.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = admin.Exec(context.Background(), "DROP SCHEMA "+schema+" CASCADE")
+		admin.Close()
+	})
+
+	u, err := url.Parse(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	qs := u.Query()
+	qs.Set("search_path", schema)
+	u.RawQuery = qs.Encode()
+	pool, err := db.Connect(ctx, u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if err := db.Migrate(ctx, pool, migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	return pool
+}
 
 func TestWalletService(t *testing.T) {
 	ctx := context.Background()
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://sportbet:sportbet@localhost:5432/sportbet?sslmode=disable"
-	}
-
-	pool, err := db.Connect(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect: %v", err)
-	}
-	defer pool.Close()
+	pool := testPool(t)
 
 	service := infrastructure.NewWalletService(pool)
 
