@@ -96,7 +96,7 @@ h1 {
   }
 
   &[data-status='PENDING'] {
-    border-left-color: #1d4ed8;
+    border-left-color: #174f15;
   }
 }
 
@@ -123,8 +123,8 @@ h1 {
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
-  background: #eef2ff;
-  color: #3730a3;
+  background: #ededf1;
+  color: #3f3f46;
 
   &[data-status='WON'] {
     background: #ecfdf3;
@@ -173,7 +173,7 @@ h1 {
 
   .pick {
     font-weight: 600;
-    color: #1d4ed8;
+    color: #174f15;
   }
 }
 
@@ -255,7 +255,7 @@ button {
   }
 
   &:focus-visible {
-    outline: 2px solid #1d4ed8;
+    outline: 2px solid #174f15;
     outline-offset: 1px;
   }
 }
