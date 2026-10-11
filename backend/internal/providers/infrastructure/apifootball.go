@@ -215,8 +215,10 @@ type apiFixture struct {
 }
 
 type apiTeam struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Logo   string `json:"logo"`
+	Winner *bool  `json:"winner"`
 }
 
 var (
