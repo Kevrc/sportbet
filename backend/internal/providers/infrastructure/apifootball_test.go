@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,11 +16,36 @@ const fixtureResponse = `{
   "response": [{
     "fixture": {"id": 123, "date": "2026-10-09T18:00:00+00:00", "status": {"short": "FT", "elapsed": 90}},
     "league": {"id": 39, "name": "Liga", "country": "Inglaterra"},
-    "teams": {"home": {"id": 10, "name": "Local"}, "away": {"id": 20, "name": "Visitante"}},
+    "teams": {"home": {"id": 10, "name": "Local", "logo": "https://media.api-sports.io/football/teams/10.png", "winner": true}, "away": {"id": 20, "name": "Visitante", "logo": "https://media.api-sports.io/football/teams/20.png", "winner": false}},
     "goals": {"home": 3, "away": 2},
     "score": {"fulltime": {"home": 2, "away": 1}}
   }]
 }`
+
+func TestAPIFootballDecodesTeamResponseFields(t *testing.T) {
+	var response apiResponse
+	if err := json.Unmarshal([]byte(fixtureResponse), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Response) != 1 {
+		t.Fatalf("fixtures = %d, want 1", len(response.Response))
+	}
+
+	home := response.Response[0].Teams.Home
+	if home.ID != 10 || home.Name != "Local" || home.Logo != "https://media.api-sports.io/football/teams/10.png" {
+		t.Fatalf("equipo local = %#v", home)
+	}
+	if home.Winner == nil || !*home.Winner {
+		t.Fatalf("ganador local = %#v, want true", home.Winner)
+	}
+	away := response.Response[0].Teams.Away
+	if away.ID != 20 || away.Name != "Visitante" || away.Logo != "https://media.api-sports.io/football/teams/20.png" {
+		t.Fatalf("equipo visitante = %#v", away)
+	}
+	if away.Winner == nil || *away.Winner {
+		t.Fatalf("ganador visitante = %#v, want false", away.Winner)
+	}
+}
 
 func TestFixturesByDateUsesExternalFulltimeData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +72,9 @@ func TestFixturesByDateUsesExternalFulltimeData(t *testing.T) {
 	}
 	if fixtures[0].Status != contracts.MatchFinished {
 		t.Fatalf("status = %q", fixtures[0].Status)
+	}
+	if fixtures[0].Home.Name != "Local" || fixtures[0].Away.Name != "Visitante" {
+		t.Fatalf("equipos = %#v / %#v", fixtures[0].Home, fixtures[0].Away)
 	}
 }
 
