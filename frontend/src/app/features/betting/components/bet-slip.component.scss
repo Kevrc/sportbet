@@ -27,7 +27,7 @@
   margin-left: 0.25rem;
   padding: 0 0.4rem;
   border-radius: 999px;
-  background: #1d4ed8;
+  background: #174f15;
   color: #fff;
   font-size: 0.75rem;
   text-align: center;
@@ -160,7 +160,7 @@ dl {
 
   .pick {
     font-weight: 600;
-    color: #1d4ed8;
+    color: #174f15;
   }
 
   .flag {
@@ -245,7 +245,7 @@ button {
   font: inherit;
 
   &:focus-visible {
-    outline: 2px solid #1d4ed8;
+    outline: 2px solid #174f15;
     outline-offset: 1px;
   }
 
@@ -254,10 +254,22 @@ button {
     padding: 0.65rem;
     font-weight: 700;
     color: #fff;
-    background: #1d4ed8;
+    background: #174f15;
     border: 0;
     border-radius: 8px;
     cursor: pointer;
+    transition:
+      transform 0.15s ease,
+      background-color 0.15s ease;
+
+    &:hover:not(:disabled) {
+      background: #0f3a0e;
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.98);
+    }
 
     &:disabled {
       opacity: 0.5;
@@ -279,10 +291,29 @@ button {
     min-height: 2.25rem;
     padding: 0 0.25rem;
     font-size: 0.85rem;
-    color: #1d4ed8;
-    background: none;
+    color: #1b1b1f;
     border: 0;
-    text-decoration: underline;
     cursor: pointer;
+    // Subrayado de izquierda a derecha al pasar el cursor o enfocar.
+    background: linear-gradient(currentColor, currentColor) no-repeat left calc(100% - 0.6rem) / 0
+      2px;
+    transition: background-size 0.25s ease;
+
+    &:hover,
+    &:focus-visible {
+      background-size: calc(100% - 0.5rem) 2px;
+    }
+  }
+}
+
+// Sin animaciones para quien las desactiva en su sistema.
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+
+    &:hover,
+    &:active {
+      transform: none;
+    }
   }
 }
