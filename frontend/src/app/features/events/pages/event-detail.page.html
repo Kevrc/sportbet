@@ -93,11 +93,11 @@
                 <span class="label">{{ s.label }}</span>
                 <span class="odd">{{ odd(s.oddX100) }}</span>
                 @if (s.result === 'WON') {
-                  <span class="outcome"><span aria-hidden="true">✓</span> Ganada</span>
+                  <span><span aria-hidden="true">✓</span> Ganada</span>
                 } @else if (s.result === 'LOST') {
-                  <span class="outcome"><span aria-hidden="true">×</span> Perdida</span>
+                  <span><span aria-hidden="true">×</span> Perdida</span>
                 } @else if (s.result === 'VOID') {
-                  <span class="outcome"><span aria-hidden="true">—</span> Anulada</span>
+                  <span><span aria-hidden="true">—</span> Anulada</span>
                 }
               </button>
             }
