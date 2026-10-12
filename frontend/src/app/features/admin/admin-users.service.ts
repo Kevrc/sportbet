@@ -2,14 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { ApiClient } from '../../core/api/api-client';
-import { Paged, Role, UserSummary } from '../../core/api/models';
+import { AdminStats, AuditEntry, Paged, Role, UserSummary } from '../../core/api/models';
 
 export interface UserChanges {
   role?: Role;
   status?: 'active' | 'blocked';
 }
 
-/** Gestión de usuarios para el admin: GET /admin/users y PATCH /admin/users/{id}. */
+/** Panel del admin: usuarios (GET/PATCH /admin/users), estadísticas y actividad. */
 @Injectable({ providedIn: 'root' })
 export class AdminUsersService {
   private readonly api = inject(ApiClient);
@@ -20,5 +20,13 @@ export class AdminUsersService {
 
   update(id: string, changes: UserChanges): Observable<UserSummary> {
     return this.api.patch<UserSummary>(`/admin/users/${encodeURIComponent(id)}`, changes);
+  }
+
+  stats(): Observable<AdminStats> {
+    return this.api.get<AdminStats>('/admin/stats');
+  }
+
+  audit(page: number, pageSize: number): Observable<Paged<AuditEntry>> {
+    return this.api.get<Paged<AuditEntry>>('/admin/audit', { page, pageSize });
   }
 }
