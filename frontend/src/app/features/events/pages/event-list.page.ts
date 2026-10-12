@@ -8,6 +8,7 @@ import { League, MatchStatus, SportEvent } from '../../../core/api/models';
 import { groupByLeague, scoreText, statusLabel } from '../events-format';
 import { EventFilters, EventsService } from '../events.service';
 import { LiveScoresStore } from '../live-scores.store';
+import { TeamCrest } from '../team-crest';
 
 const STATUS_FILTERS: { value: MatchStatus; label: string }[] = [
   { value: 'SCHEDULED', label: 'Programados' },
@@ -17,7 +18,7 @@ const STATUS_FILTERS: { value: MatchStatus; label: string }[] = [
 
 @Component({
   selector: 'app-event-list-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, TeamCrest],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './event-list.page.html',
   styleUrl: './event-list.page.scss',
