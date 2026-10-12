@@ -89,7 +89,12 @@ func TestStartReplayRejectsPathTraversal(t *testing.T) {
 }
 
 func TestStartReplayUsesOnlyAValidatedFileInConfiguredDirectory(t *testing.T) {
-	root := t.TempDir()
+	// En macOS t.TempDir() está bajo /var, un enlace a /private/var: se
+	// resuelve para comparar con la ruta validada que entrega el handler.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	configured := filepath.Join(root, "default.json")
 	selected := filepath.Join(root, "selected.json")
 	for _, path := range []string{configured, selected} {
