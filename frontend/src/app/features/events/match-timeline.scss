@@ -20,7 +20,7 @@
 
 h2 {
   margin: 0 0 0.75rem;
-  background: var(--sportbet-superficie);
+  background: transparent;
   color: var(--sportbet-texto);
   font-size: 1rem;
 }
@@ -40,7 +40,7 @@ li {
   gap: 0.5rem;
   padding: 0.55rem 0.65rem;
   border-radius: 8px;
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto);
 }
 
@@ -51,7 +51,7 @@ li.away {
 
 .minute {
   min-width: 3rem;
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto-secundario);
   font-size: 0.8rem;
   font-weight: 700;
@@ -70,7 +70,7 @@ li.away .minute {
   place-items: center;
   border: 1px solid var(--sportbet-borde);
   border-radius: 50%;
-  background: var(--sportbet-superficie);
+  background: transparent;
   color: var(--sportbet-texto);
   font-size: 1rem;
   line-height: 1;
@@ -89,7 +89,7 @@ strong {
 
 small,
 .empty {
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto-secundario);
   font-size: 0.8rem;
 }
