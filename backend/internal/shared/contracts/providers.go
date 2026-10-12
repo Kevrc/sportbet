@@ -38,6 +38,9 @@ type ProviderFixture struct {
 	Round     string
 	VenueName string
 	VenueCity string
+	// Events son los sucesos del partido si el proveedor los entrega en esta
+	// consulta (API-Football: sí por ID, no por fecha). Vacío = sin datos.
+	Events []MatchEvent
 	// Marcador de tiempo reglamentario; nil mientras no haya empezado.
 	HomeScore *int
 	AwayScore *int
