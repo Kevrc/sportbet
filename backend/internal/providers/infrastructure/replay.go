@@ -31,6 +31,35 @@ type replayFrame struct {
 	Home          int    `json:"home"`
 	Away          int    `json:"away"`
 	Minute        int    `json:"minute"`
+	// Events son los sucesos que ocurren en este cuadro (no acumulados).
+	Events []replayEvent `json:"events,omitempty"`
+}
+
+type replayEvent struct {
+	Minute int    `json:"minute"`
+	Extra  int    `json:"extra,omitempty"`
+	Side   string `json:"side"`
+	Type   string `json:"type"`
+	Detail string `json:"detail"`
+	Player string `json:"player"`
+	Assist string `json:"assist,omitempty"`
+}
+
+// eventsUntil acumula los sucesos de todos los cuadros hasta offset.
+func (p *ReplayProvider) eventsUntil(offset int64) []contracts.MatchEvent {
+	var out []contracts.MatchEvent
+	for _, f := range p.frames {
+		if f.OffsetSeconds > offset {
+			break
+		}
+		for _, e := range f.Events {
+			out = append(out, contracts.MatchEvent{
+				Minute: e.Minute, Extra: e.Extra, Side: e.Side, Type: e.Type,
+				Detail: e.Detail, Player: e.Player, Assist: e.Assist,
+			})
+		}
+	}
+	return out
 }
 
 type ReplayProvider struct {
@@ -133,6 +162,7 @@ func (p *ReplayProvider) LiveScores(ctx context.Context) ([]contracts.LiveScore,
 		AwayScore:  frame.Away,
 		Minute:     frame.Minute,
 		ObservedAt: now,
+		Events:     p.eventsUntil(frame.OffsetSeconds),
 	}}, nil
 }
 

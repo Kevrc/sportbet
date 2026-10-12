@@ -42,6 +42,8 @@ type Event struct {
 	VenueName     *string
 	VenueCity     *string
 	Markets       []Market
+	// Timeline son los sucesos del partido (solo en el detalle).
+	Timeline []contracts.MatchEvent
 }
 
 type Market struct {
@@ -212,6 +214,7 @@ func (s *Service) ApplyLiveScores(ctx context.Context, provider string, now time
 			(score.Status != contracts.MatchLive && score.Status != contracts.MatchInterrupted) {
 			continue
 		}
+		score.Events = validMatchEvents(score.Events)
 		valid = append(valid, score)
 	}
 	changes, err := s.repository.ApplyLiveScores(ctx, provider, now, valid)
@@ -260,4 +263,21 @@ func validStatus(status contracts.MatchStatus) bool {
 	default:
 		return false
 	}
+}
+
+// validMatchEvents descarta sucesos con tipo, lado o minuto inválidos para que
+// un dato raro del proveedor no rompa la transacción del marcador.
+func validMatchEvents(events []contracts.MatchEvent) []contracts.MatchEvent {
+	out := events[:0:0]
+	for _, e := range events {
+		switch {
+		case e.Minute < 0 || e.Extra < 0:
+		case e.Side != contracts.SideHome && e.Side != contracts.SideAway:
+		case e.Type != contracts.MatchEventGoal && e.Type != contracts.MatchEventCard &&
+			e.Type != contracts.MatchEventSubst && e.Type != contracts.MatchEventVAR:
+		default:
+			out = append(out, e)
+		}
+	}
+	return out
 }

@@ -91,8 +91,48 @@ func (r *Repository) GetEvent(ctx context.Context, eventID string) (application.
 	if err != nil {
 		return application.Event{}, fmt.Errorf("events: consultar evento: %w", err)
 	}
-	event.Markets, err = listEventMarkets(ctx, r.pool, eventID)
+	if event.Markets, err = listEventMarkets(ctx, r.pool, eventID); err != nil {
+		return event, err
+	}
+	event.Timeline, err = listMatchEvents(ctx, r.pool, eventID)
 	return event, err
+}
+
+func listMatchEvents(ctx context.Context, q interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}, eventID string) ([]contracts.MatchEvent, error) {
+	rows, err := q.Query(ctx, `
+		SELECT minute, extra, side, type, detail, player, assist
+		FROM match_events WHERE event_id = $1::uuid ORDER BY seq`, eventID)
+	if err != nil {
+		return nil, fmt.Errorf("events: listar sucesos del partido: %w", err)
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (contracts.MatchEvent, error) {
+		var e contracts.MatchEvent
+		err := row.Scan(&e.Minute, &e.Extra, &e.Side, &e.Type, &e.Detail, &e.Player, &e.Assist)
+		return e, err
+	})
+}
+
+// replaceMatchEvents guarda la lista completa de sucesos del último dato en
+// vivo. Una lista vacía no borra lo guardado (el proveedor puede no enviarla).
+func replaceMatchEvents(ctx context.Context, tx pgx.Tx, eventID string, events []contracts.MatchEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM match_events WHERE event_id = $1::uuid`, eventID); err != nil {
+		return fmt.Errorf("events: limpiar sucesos del partido: %w", err)
+	}
+	for i, e := range events {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO match_events (event_id, seq, minute, extra, side, type, detail, player, assist)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			eventID, i, e.Minute, e.Extra, e.Side, e.Type, e.Detail, e.Player, e.Assist)
+		if err != nil {
+			return fmt.Errorf("events: guardar suceso del partido: %w", err)
+		}
+	}
+	return nil
 }
 
 func (r *Repository) SetFeatured(ctx context.Context, eventID string, featured bool) (application.Event, error) {
@@ -260,6 +300,9 @@ func (r *Repository) ApplyLiveScores(ctx context.Context, provider string, now t
 			WHERE id = $1::uuid`, eventID, score.Status, score.HomeScore, score.AwayScore, score.Minute, observedAt)
 		if err != nil {
 			return nil, fmt.Errorf("events: guardar marcador en vivo: %w", err)
+		}
+		if err := replaceMatchEvents(ctx, tx, eventID, score.Events); err != nil {
+			return nil, err
 		}
 		event, err := scanEvent(tx.QueryRow(ctx, eventSelect+`WHERE e.id = $1::uuid`, eventID))
 		if err != nil {

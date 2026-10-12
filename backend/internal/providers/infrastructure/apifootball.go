@@ -116,7 +116,7 @@ func (p *APIFootball) LiveScores(ctx context.Context) ([]contracts.LiveScore, er
 		scores = append(scores, contracts.LiveScore{
 			ExternalID: strconv.Itoa(item.Fixture.ID),
 			Status:     status, HomeScore: *item.Goals.Home, AwayScore: *item.Goals.Away,
-			Minute: minute,
+			Minute: minute, Events: convertEvents(item),
 		})
 	}
 	return scores, nil
@@ -348,6 +348,63 @@ type apiFixture struct {
 			Away *int `json:"away"`
 		} `json:"fulltime"`
 	} `json:"score"`
+	// Events llega gratis en fixtures?live=all (goles, tarjetas, cambios, VAR).
+	Events []apiEvent `json:"events"`
+}
+
+type apiEvent struct {
+	Time struct {
+		Elapsed *int `json:"elapsed"`
+		Extra   *int `json:"extra"`
+	} `json:"time"`
+	Team struct {
+		ID int `json:"id"`
+	} `json:"team"`
+	Player struct {
+		Name *string `json:"name"`
+	} `json:"player"`
+	Assist struct {
+		Name *string `json:"name"`
+	} `json:"assist"`
+	Type   string `json:"type"`
+	Detail string `json:"detail"`
+}
+
+var apiEventTypes = map[string]string{
+	"goal": contracts.MatchEventGoal, "card": contracts.MatchEventCard,
+	"subst": contracts.MatchEventSubst, "var": contracts.MatchEventVAR,
+}
+
+// convertEvents traduce los sucesos; descarta los de tipo o equipo desconocido.
+func convertEvents(item apiFixture) []contracts.MatchEvent {
+	out := make([]contracts.MatchEvent, 0, len(item.Events))
+	for _, e := range item.Events {
+		kind, ok := apiEventTypes[strings.ToLower(e.Type)]
+		if !ok || e.Time.Elapsed == nil || *e.Time.Elapsed < 0 {
+			continue
+		}
+		var side string
+		switch e.Team.ID {
+		case item.Teams.Home.ID:
+			side = contracts.SideHome
+		case item.Teams.Away.ID:
+			side = contracts.SideAway
+		default:
+			continue
+		}
+		event := contracts.MatchEvent{Minute: *e.Time.Elapsed, Side: side, Type: kind, Detail: e.Detail}
+		if e.Time.Extra != nil {
+			event.Extra = *e.Time.Extra
+		}
+		if e.Player.Name != nil {
+			event.Player = *e.Player.Name
+		}
+		if e.Assist.Name != nil {
+			event.Assist = *e.Assist.Name
+		}
+		out = append(out, event)
+	}
+	return out
 }
 
 type apiTeam struct {
