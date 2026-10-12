@@ -35,6 +35,7 @@ type Repository interface {
 	ListEventMarkets(context.Context, string) ([]Market, error)
 	EnsureMarkets(context.Context, string, int) error
 	EnsureUpcomingMarkets(context.Context, time.Time, int) error
+	RepriceOpenMarkets(context.Context, time.Time, int) (int, error)
 	CloseMarketsForEvent(context.Context, string) error
 	CloseMarketsPastCutoff(context.Context, time.Time) error
 	GetSelections(context.Context, []string) (map[string]contracts.SelectionInfo, error)
@@ -76,6 +77,18 @@ func (s *Service) EnsureUpcomingMarkets(ctx context.Context, now time.Time) erro
 		return errs.New(errs.ErrValidation, "INVALID_ODDS_MARGIN", "el margen de cuotas 1X2 debe estar entre 0 y 99")
 	}
 	return s.repository.EnsureUpcomingMarkets(ctx, now, s.oneXTwoMargin)
+}
+
+// RepriceOpenMarkets recalcula las cuotas de los mercados abiertos con la
+// fuerza actual de los equipos (que se actualiza desde la tabla de
+// posiciones). Las apuestas ya hechas conservan su cuota congelada; quien vea
+// una cuota vieja recibe ODDS_CHANGED al apostar. Devuelve cuántas
+// selecciones cambiaron.
+func (s *Service) RepriceOpenMarkets(ctx context.Context, now time.Time) (int, error) {
+	if s.oneXTwoMargin < 0 || s.oneXTwoMargin >= 100 {
+		return 0, errs.New(errs.ErrValidation, "INVALID_ODDS_MARGIN", "el margen de cuotas 1X2 debe estar entre 0 y 99")
+	}
+	return s.repository.RepriceOpenMarkets(ctx, now, s.oneXTwoMargin)
 }
 
 func (s *Service) CloseMarketsForEvent(ctx context.Context, eventID string) error {

@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"sportbet/internal/shared/contracts"
@@ -19,6 +22,10 @@ type APIFootball struct {
 	baseURL *url.URL
 	key     string
 	client  *http.Client
+
+	// maxSeason es la última temporada que el plan permite consultar en
+	// /standings (el gratuito no incluye la actual). 0 = sin límite conocido.
+	maxSeason atomic.Int32
 }
 
 func NewAPIFootball(baseURL, key string, client *http.Client) (*APIFootball, error) {
@@ -115,6 +122,92 @@ func (p *APIFootball) LiveScores(ctx context.Context) ([]contracts.LiveScore, er
 	return scores, nil
 }
 
+// Standings devuelve la tabla de la liga y temporada. Algunas ligas (como la
+// Liga 1 de Perú) tienen varias tablas (Apertura, Clausura, acumulada): de cada
+// equipo se toma la fila con más partidos jugados.
+func (p *APIFootball) Standings(ctx context.Context, leagueExternalID string, season int) ([]contracts.TeamStanding, error) {
+	if leagueExternalID == "" || season <= 0 {
+		return nil, errs.New(errs.ErrValidation, "INVALID_STANDINGS_QUERY", "la liga y la temporada son obligatorias")
+	}
+	if limit := int(p.maxSeason.Load()); limit > 0 && season > limit {
+		season = limit
+	}
+	var response apiStandingsResponse
+	query := url.Values{"league": {leagueExternalID}, "season": {strconv.Itoa(season)}}
+	err := p.get(ctx, "standings", query, &response)
+	if limit := planMaxSeason(err); limit > 0 && limit < season {
+		// El plan gratuito responde "try from 2022 to 2024": se usa la última
+		// temporada permitida como fuerza histórica y se recuerda el límite
+		// para no gastar otra llamada en las siguientes ligas.
+		p.maxSeason.Store(int32(limit))
+		query.Set("season", strconv.Itoa(limit))
+		response = apiStandingsResponse{}
+		err = p.get(ctx, "standings", query, &response)
+	}
+	if err != nil {
+		return nil, err
+	}
+	best := map[int]contracts.TeamStanding{}
+	for _, item := range response.Response {
+		for _, group := range item.League.Standings {
+			for _, row := range group {
+				if row.Team.ID <= 0 {
+					continue
+				}
+				current, seen := best[row.Team.ID]
+				if seen && current.Played >= row.All.Played {
+					continue
+				}
+				best[row.Team.ID] = contracts.TeamStanding{
+					TeamExternalID: strconv.Itoa(row.Team.ID),
+					Played:         row.All.Played,
+					GoalsFor:       row.All.Goals.For,
+					GoalsAgainst:   row.All.Goals.Against,
+				}
+			}
+		}
+	}
+	out := make([]contracts.TeamStanding, 0, len(best))
+	for _, standing := range best {
+		out = append(out, standing)
+	}
+	return out, nil
+}
+
+var planSeasonRange = regexp.MustCompile(`(?i)season.*try from \d{4} to (\d{4})`)
+
+// planMaxSeason extrae la última temporada permitida del error del plan, o 0.
+func planMaxSeason(err error) int {
+	if err == nil {
+		return 0
+	}
+	m := planSeasonRange.FindStringSubmatch(err.Error())
+	if m == nil {
+		return 0
+	}
+	year, _ := strconv.Atoi(m[1])
+	return year
+}
+
+type apiStandingsResponse struct {
+	Response []struct {
+		League struct {
+			Standings [][]struct {
+				Team struct {
+					ID int `json:"id"`
+				} `json:"team"`
+				All struct {
+					Played int `json:"played"`
+					Goals  struct {
+						For     int `json:"for"`
+						Against int `json:"against"`
+					} `json:"goals"`
+				} `json:"all"`
+			} `json:"standings"`
+		} `json:"league"`
+	} `json:"response"`
+}
+
 func (p *APIFootball) getFixtures(ctx context.Context, query url.Values) (apiResponse, error) {
 	var response apiResponse
 	if err := p.get(ctx, "fixtures", query, &response); err != nil {
@@ -123,7 +216,7 @@ func (p *APIFootball) getFixtures(ctx context.Context, query url.Values) (apiRes
 	return response, nil
 }
 
-func (p *APIFootball) get(ctx context.Context, endpoint string, query url.Values, target *apiResponse) error {
+func (p *APIFootball) get(ctx context.Context, endpoint string, query url.Values, target any) error {
 	requestURL := *p.baseURL
 	requestURL.Path = strings.TrimRight(requestURL.Path, "/") + "/" + endpoint
 	requestURL.RawQuery = query.Encode()
@@ -144,12 +237,22 @@ func (p *APIFootball) get(ctx context.Context, endpoint string, query url.Values
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return errs.New(errs.ErrProviderUnavailable, "PROVIDER_HTTP_ERROR", fmt.Sprintf("API-Football respondió HTTP %d", response.StatusCode))
 	}
-	if err := json.NewDecoder(response.Body).Decode(target); err != nil {
+	body, err := io.ReadAll(io.LimitReader(response.Body, 20<<20))
+	if err != nil {
+		return errs.Wrap(errs.ErrProviderUnavailable, err, "PROVIDER_UNAVAILABLE", "no se pudo leer la respuesta de API-Football")
+	}
+	var envelope struct {
+		Errors json.RawMessage `json:"errors"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
 		return errs.Wrap(errs.ErrProviderUnavailable, err, "PROVIDER_INVALID_RESPONSE", "API-Football devolvió JSON inválido")
 	}
-	if hasAPIErrors(target.Errors) {
+	if hasAPIErrors(envelope.Errors) {
 		return errs.New(errs.ErrProviderUnavailable, "PROVIDER_API_ERROR",
-			"API-Football informó un error en la consulta: "+string(target.Errors))
+			"API-Football informó un error en la consulta: "+string(envelope.Errors))
+	}
+	if err := json.Unmarshal(body, target); err != nil {
+		return errs.Wrap(errs.ErrProviderUnavailable, err, "PROVIDER_INVALID_RESPONSE", "API-Football devolvió JSON inválido")
 	}
 	return nil
 }
@@ -182,10 +285,14 @@ func convertFixture(item apiFixture, useFulltime bool) (contracts.ProviderFixtur
 		ExternalID: strconv.Itoa(item.Fixture.ID),
 		League: contracts.ProviderLeague{
 			ExternalID: strconv.Itoa(item.League.ID), Name: item.League.Name, Country: item.League.Country,
+			Season: item.League.Season, LogoURL: safeLogoURL(item.League.Logo), FlagURL: safeLogoURL(item.League.Flag),
 		},
-		Home:    contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Home.ID), Name: item.Teams.Home.Name, LogoURL: safeLogoURL(item.Teams.Home.Logo)},
-		Away:    contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Away.ID), Name: item.Teams.Away.Name, LogoURL: safeLogoURL(item.Teams.Away.Logo)},
-		StartAt: item.Fixture.Date, Status: matchStatus(item.Fixture.Status.Short),
+		Round:     item.League.Round,
+		VenueName: item.Fixture.Venue.Name,
+		VenueCity: item.Fixture.Venue.City,
+		Home:      contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Home.ID), Name: item.Teams.Home.Name, LogoURL: safeLogoURL(item.Teams.Home.Logo)},
+		Away:      contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Away.ID), Name: item.Teams.Away.Name, LogoURL: safeLogoURL(item.Teams.Away.Logo)},
+		StartAt:   item.Fixture.Date, Status: matchStatus(item.Fixture.Status.Short),
 	}
 	if useFulltime {
 		fixture.HomeScore, fixture.AwayScore = item.Score.Fulltime.Home, item.Score.Fulltime.Away
@@ -207,8 +314,12 @@ type apiResponse struct {
 
 type apiFixture struct {
 	Fixture struct {
-		ID     int       `json:"id"`
-		Date   time.Time `json:"date"`
+		ID    int       `json:"id"`
+		Date  time.Time `json:"date"`
+		Venue struct {
+			Name string `json:"name"`
+			City string `json:"city"`
+		} `json:"venue"`
 		Status struct {
 			Short   string `json:"short"`
 			Elapsed *int   `json:"elapsed"`
@@ -218,6 +329,10 @@ type apiFixture struct {
 		ID      int    `json:"id"`
 		Name    string `json:"name"`
 		Country string `json:"country"`
+		Season  int    `json:"season"`
+		Logo    string `json:"logo"`
+		Flag    string `json:"flag"`
+		Round   string `json:"round"`
 	} `json:"league"`
 	Teams struct {
 		Home apiTeam `json:"home"`
@@ -246,3 +361,5 @@ var (
 	_ contracts.FixtureProvider   = (*APIFootball)(nil)
 	_ contracts.LiveScoreProvider = (*APIFootball)(nil)
 )
+
+var _ contracts.StandingsProvider = (*APIFootball)(nil)

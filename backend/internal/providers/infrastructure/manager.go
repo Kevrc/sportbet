@@ -80,3 +80,15 @@ var (
 	_ contracts.FixtureProvider   = (*ProviderManager)(nil)
 	_ contracts.LiveScoreProvider = (*ProviderManager)(nil)
 )
+
+// Standings delega en el proveedor actual si entrega tablas de posiciones.
+func (m *ProviderManager) Standings(ctx context.Context, leagueExternalID string, season int) ([]contracts.TeamStanding, error) {
+	m.mu.RLock()
+	provider := m.fixtures
+	m.mu.RUnlock()
+	standings, ok := provider.(contracts.StandingsProvider)
+	if !ok {
+		return nil, errs.New(errs.ErrProviderUnavailable, "STANDINGS_UNSUPPORTED", "el proveedor actual no entrega tablas de posiciones")
+	}
+	return standings.Standings(ctx, leagueExternalID, season)
+}

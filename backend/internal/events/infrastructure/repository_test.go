@@ -128,3 +128,77 @@ func TestImportFixturesStoresTeamLogoAndKeepsItWhenMissing(t *testing.T) {
 		t.Fatalf("escudo visitante = %v; want nil", *event.Away.LogoURL)
 	}
 }
+
+func TestImportStoresLeagueDetailsVenueAndStrengths(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	repo := infrastructure.NewRepository(pool)
+	now := time.Now().UTC()
+	_, err := repo.ImportFixtures(ctx, "apifootball", now, []contracts.ProviderFixture{{
+		ExternalID: "300", StartAt: now.Add(2 * time.Hour), Status: contracts.MatchScheduled,
+		League: contracts.ProviderLeague{ExternalID: "39", Name: "Premier League", Country: "England", Season: 2026,
+			LogoURL: "https://media.api-sports.io/football/leagues/39.png", FlagURL: "https://media.api-sports.io/flags/gb-eng.svg"},
+		Home:  contracts.ProviderTeam{ExternalID: "40", Name: "Liverpool"},
+		Away:  contracts.ProviderTeam{ExternalID: "50", Name: "Manchester City"},
+		Round: "Regular Season - 8", VenueName: "Anfield", VenueCity: "Liverpool",
+	}}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var id string
+	_ = pool.QueryRow(ctx, `SELECT id::text FROM events`).Scan(&id)
+	event, err := repo.GetEvent(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if event.League.LogoURL == nil || event.League.FlagURL == nil || event.Round == nil || *event.Round != "Regular Season - 8" ||
+		event.VenueName == nil || *event.VenueName != "Anfield" {
+		t.Fatalf("evento = %+v", event)
+	}
+
+	leagues, err := repo.ListStandingsLeagues(ctx, "apifootball")
+	if err != nil || len(leagues) != 1 || leagues[0].ExternalID != "39" || leagues[0].Season != 2026 {
+		t.Fatalf("ligas = %+v, err = %v", leagues, err)
+	}
+	n, err := repo.UpdateTeamStrengths(ctx, "apifootball", map[string]float64{"40": 1.45, "50": 1.30, "999": 0.7})
+	if err != nil || n != 2 {
+		t.Fatalf("actualizados = %d, err = %v (el 999 no está importado)", n, err)
+	}
+	if n, _ := repo.UpdateTeamStrengths(ctx, "apifootball", map[string]float64{"40": 1.45}); n != 0 {
+		t.Fatalf("sin cambios debe actualizar 0, actualizó %d", n)
+	}
+	var s float64
+	_ = pool.QueryRow(ctx, `SELECT strength FROM teams WHERE name = 'Liverpool'`).Scan(&s)
+	if s != 1.45 {
+		t.Fatalf("fuerza = %v", s)
+	}
+}
+
+func TestHasFeaturedInPlay(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	repo := infrastructure.NewRepository(pool)
+	now := time.Now().UTC()
+	_, err := repo.ImportFixtures(ctx, "apifootball", now, []contracts.ProviderFixture{{
+		ExternalID: "400", StartAt: now.Add(-30 * time.Minute), Status: contracts.MatchLive,
+		League: contracts.ProviderLeague{ExternalID: "39", Name: "Premier"},
+		Home:   contracts.ProviderTeam{ExternalID: "1", Name: "A"},
+		Away:   contracts.ProviderTeam{ExternalID: "2", Name: "B"},
+	}}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := repo.HasFeaturedInPlay(ctx, "apifootball", now); err != nil || ok {
+		t.Fatalf("sin destacados: ok = %v, err = %v; no debe consultar en vivo", ok, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE events SET featured = true`); err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := repo.HasFeaturedInPlay(ctx, "apifootball", now); !ok {
+		t.Fatal("con un destacado en juego debe consultar en vivo")
+	}
+	if ok, _ := repo.HasFeaturedInPlay(ctx, "replay", now); ok {
+		t.Fatal("solo cuenta los eventos del mismo proveedor")
+	}
+}

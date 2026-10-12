@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -208,5 +209,86 @@ func TestFixturesByDateIncludesTeamLogos(t *testing.T) {
 	}
 	if fixtures[0].Home.LogoURL != "https://media.api-sports.io/football/teams/40.png" || fixtures[0].Away.LogoURL != "" {
 		t.Fatalf("escudos = %q / %q", fixtures[0].Home.LogoURL, fixtures[0].Away.LogoURL)
+	}
+}
+
+func TestStandingsTakesRowWithMostGamesPerTeam(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/standings" || r.URL.Query().Get("league") != "281" || r.URL.Query().Get("season") != "2026" {
+			t.Errorf("consulta = %s?%s", r.URL.Path, r.URL.RawQuery)
+		}
+		// Liga 1: Apertura (14 PJ) y acumulada (30 PJ) para el mismo equipo.
+		_, _ = w.Write([]byte(`{"errors":[],"response":[{"league":{"standings":[
+			[{"team":{"id":2539},"all":{"played":14,"goals":{"for":20,"against":9}}}],
+			[{"team":{"id":2539},"all":{"played":30,"goals":{"for":48,"against":20}}},
+			 {"team":{"id":2540},"all":{"played":30,"goals":{"for":25,"against":40}}}]
+		]}}]}`))
+	}))
+	defer server.Close()
+	provider, err := NewAPIFootball(server.URL, "test-key", server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := provider.Standings(context.Background(), "281", 2026)
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("rows = %+v, err = %v", rows, err)
+	}
+	for _, r := range rows {
+		if r.TeamExternalID == "2539" && (r.Played != 30 || r.GoalsFor != 48) {
+			t.Fatalf("debió tomar la tabla acumulada: %+v", r)
+		}
+	}
+}
+
+func TestFixturesByDateIncludesLeagueAndVenueDetails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"errors":[],"response":[{
+			"fixture": {"id": 8, "date": "2026-10-12T19:00:00+00:00", "status": {"short": "NS"},
+			            "venue": {"name": "Anfield", "city": "Liverpool"}},
+			"league": {"id": 39, "name": "Premier League", "country": "England", "season": 2026,
+			           "logo": "https://media.api-sports.io/football/leagues/39.png",
+			           "flag": "https://media.api-sports.io/flags/gb-eng.svg", "round": "Regular Season - 8"},
+			"teams": {"home": {"id": 40, "name": "Liverpool"}, "away": {"id": 50, "name": "Manchester City"}},
+			"goals": {"home": null, "away": null}, "score": {"fulltime": {"home": null, "away": null}}
+		}]}`))
+	}))
+	defer server.Close()
+	provider, _ := NewAPIFootball(server.URL, "test-key", server.Client())
+	fixtures, err := provider.FixturesByDate(context.Background(), time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC), nil)
+	if err != nil || len(fixtures) != 1 {
+		t.Fatalf("fixtures = %v, err = %v", fixtures, err)
+	}
+	f := fixtures[0]
+	if f.League.Season != 2026 || f.League.LogoURL == "" || f.League.FlagURL == "" ||
+		f.Round != "Regular Season - 8" || f.VenueName != "Anfield" || f.VenueCity != "Liverpool" {
+		t.Fatalf("fixture = %+v", f)
+	}
+}
+
+func TestStandingsFallsBackToLastSeasonAllowedByPlan(t *testing.T) {
+	var seasons []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		season := r.URL.Query().Get("season")
+		seasons = append(seasons, r.URL.Query().Get("league")+"@"+season)
+		if season != "2024" {
+			_, _ = w.Write([]byte(`{"errors":{"plan":"Free plans do not have access to this season, try from 2022 to 2024."},"response":[]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"errors":[],"response":[{"league":{"standings":[[{"team":{"id":40},"all":{"played":38,"goals":{"for":86,"against":41}}}]]}}]}`))
+	}))
+	defer server.Close()
+	provider, _ := NewAPIFootball(server.URL, "test-key", server.Client())
+
+	rows, err := provider.Standings(context.Background(), "39", 2026)
+	if err != nil || len(rows) != 1 || rows[0].GoalsFor != 86 {
+		t.Fatalf("rows = %+v, err = %v", rows, err)
+	}
+	// La segunda liga ya va directo a 2024: una sola llamada.
+	if _, err := provider.Standings(context.Background(), "140", 2026); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"39@2026", "39@2024", "140@2024"}
+	if strings.Join(seasons, ",") != strings.Join(want, ",") {
+		t.Fatalf("consultas = %v; want %v", seasons, want)
 	}
 }

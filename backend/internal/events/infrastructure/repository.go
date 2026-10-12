@@ -25,7 +25,7 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func (r *Repository) ListLeagues(ctx context.Context) ([]application.League, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id::text, name, country, featured
+		SELECT id::text, name, country, featured, logo_url, flag_url
 		FROM leagues ORDER BY featured DESC, name`)
 	if err != nil {
 		return nil, fmt.Errorf("events: listar ligas: %w", err)
@@ -34,7 +34,7 @@ func (r *Repository) ListLeagues(ctx context.Context) ([]application.League, err
 	leagues := make([]application.League, 0)
 	for rows.Next() {
 		var league application.League
-		if err := rows.Scan(&league.ID, &league.Name, &league.Country, &league.Featured); err != nil {
+		if err := rows.Scan(&league.ID, &league.Name, &league.Country, &league.Featured, &league.LogoURL, &league.FlagURL); err != nil {
 			return nil, fmt.Errorf("events: leer liga: %w", err)
 		}
 		leagues = append(leagues, league)
@@ -115,7 +115,7 @@ func listEventMarkets(ctx context.Context, q interface {
 		FROM markets m
 		LEFT JOIN selections s ON s.market_id = m.id
 		WHERE m.event_id = $1::uuid
-		ORDER BY m.code, s.id`, eventID)
+		ORDER BY m.code, array_position(ARRAY['HOME','DRAW','AWAY','OVER','UNDER','YES','NO'], s.code)`, eventID)
 	if err != nil {
 		return nil, fmt.Errorf("events: consultar mercados del evento: %w", err)
 	}
@@ -312,10 +312,13 @@ func (r *Repository) upsertFixture(
 		}
 		err = tx.QueryRow(ctx, `
 			INSERT INTO events (league_id, home_team_id, away_team_id, start_at, status,
-			                    home_score, away_score, kicked_off_at, live_updated_at, finished_at)
-			VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10)
+			                    home_score, away_score, kicked_off_at, live_updated_at, finished_at,
+			                    round, venue_name, venue_city)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10,
+			        NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''))
 			RETURNING id::text`, leagueID, homeID, awayID, fixture.StartAt, fixture.Status,
-			homeScore, awayScore, startedAt, liveUpdatedAt, finishedAt).Scan(&eventID)
+			homeScore, awayScore, startedAt, liveUpdatedAt, finishedAt,
+			fixture.Round, fixture.VenueName, fixture.VenueCity).Scan(&eventID)
 		if err != nil {
 			return nil, fmt.Errorf("events: insertar evento: %w", err)
 		}
@@ -359,10 +362,14 @@ func (r *Repository) upsertFixture(
 		                  finished_at = CASE WHEN $11::boolean THEN COALESCE(finished_at, $10) ELSE finished_at END,
 		                  live_updated_at = CASE WHEN $12::boolean THEN $10
 		                      WHEN $9::boolean THEN COALESCE(live_updated_at, $10)
-		                      ELSE live_updated_at END
+		                      ELSE live_updated_at END,
+		                  round = COALESCE(NULLIF($15, ''), round),
+		                  venue_name = COALESCE(NULLIF($16, ''), venue_name),
+		                  venue_city = COALESCE(NULLIF($17, ''), venue_city)
 		WHERE id = $1::uuid`, eventID, leagueID, homeID, awayID, fixture.StartAt, fixture.Status,
 		fixture.HomeScore, fixture.AwayScore, started, now, fixture.Status.IsTerminal(), refresh,
-		fixture.Status == contracts.MatchFinished, fixture.StartAt)
+		fixture.Status == contracts.MatchFinished, fixture.StartAt,
+		fixture.Round, fixture.VenueName, fixture.VenueCity)
 	if err != nil {
 		return nil, fmt.Errorf("events: actualizar fixture: %w", err)
 	}
@@ -395,7 +402,12 @@ func upsertLeague(ctx context.Context, tx pgx.Tx, provider string, league contra
 		SELECT entity_id::text FROM external_refs
 		WHERE provider = $1 AND entity_type = 'league' AND external_id = $2`, provider, league.ExternalID).Scan(&id)
 	if err == nil {
-		_, err = tx.Exec(ctx, `UPDATE leagues SET name = $2, country = $3 WHERE id = $1::uuid`, id, league.Name, league.Country)
+		_, err = tx.Exec(ctx, `
+			UPDATE leagues SET name = $2, country = $3,
+			       season = COALESCE(NULLIF($4, 0), season),
+			       logo_url = COALESCE(NULLIF($5, ''), logo_url),
+			       flag_url = COALESCE(NULLIF($6, ''), flag_url)
+			WHERE id = $1::uuid`, id, league.Name, league.Country, league.Season, league.LogoURL, league.FlagURL)
 		if err != nil {
 			return "", fmt.Errorf("events: actualizar liga: %w", err)
 		}
@@ -404,7 +416,10 @@ func upsertLeague(ctx context.Context, tx pgx.Tx, provider string, league contra
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return "", fmt.Errorf("events: localizar liga: %w", err)
 	}
-	if err := tx.QueryRow(ctx, `INSERT INTO leagues (name, country) VALUES ($1, $2) RETURNING id::text`, league.Name, league.Country).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO leagues (name, country, season, logo_url, flag_url)
+		VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, ''), NULLIF($5, ''))
+		RETURNING id::text`, league.Name, league.Country, league.Season, league.LogoURL, league.FlagURL).Scan(&id); err != nil {
 		return "", fmt.Errorf("events: insertar liga: %w", err)
 	}
 	return id, insertExternalRef(ctx, tx, provider, "league", id, league.ExternalID)
@@ -456,10 +471,10 @@ func insertExternalRef(ctx context.Context, tx pgx.Tx, provider, entityType, ent
 }
 
 const eventSelect = `
-	SELECT e.id::text, l.id::text, l.name, l.country, l.featured,
+	SELECT e.id::text, l.id::text, l.name, l.country, l.featured, l.logo_url, l.flag_url,
 	       home.id::text, home.name, home.logo_url, away.id::text, away.name, away.logo_url,
 	       e.start_at, e.status, e.home_score, e.away_score, e.minute,
-	       e.featured, e.live_updated_at
+	       e.featured, e.live_updated_at, e.round, e.venue_name, e.venue_city
 	FROM events e
 	JOIN leagues l ON l.id = e.league_id
 	JOIN teams home ON home.id = e.home_team_id
@@ -476,8 +491,10 @@ func scanEvent(row scanner) (application.Event, error) {
 	var homeScore, awayScore, minute *int32
 	err := row.Scan(
 		&event.ID, &event.League.ID, &event.League.Name, &event.League.Country, &event.League.Featured,
+		&event.League.LogoURL, &event.League.FlagURL,
 		&event.Home.ID, &event.Home.Name, &event.Home.LogoURL, &event.Away.ID, &event.Away.Name, &event.Away.LogoURL,
 		&event.StartAt, &status, &homeScore, &awayScore, &minute, &event.Featured, &event.LiveUpdatedAt,
+		&event.Round, &event.VenueName, &event.VenueCity,
 	)
 	if err != nil {
 		return application.Event{}, err
@@ -511,3 +528,65 @@ func emptyAsNil(value string) any {
 }
 
 var _ application.Repository = (*Repository)(nil)
+
+func (r *Repository) ListStandingsLeagues(ctx context.Context, provider string) ([]application.StandingsLeague, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT x.external_id, l.season
+		FROM leagues l
+		JOIN external_refs x ON x.entity_type = 'league' AND x.entity_id = l.id AND x.provider = $1
+		WHERE l.season IS NOT NULL
+		ORDER BY l.name`, provider)
+	if err != nil {
+		return nil, fmt.Errorf("events: listar ligas con temporada: %w", err)
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (application.StandingsLeague, error) {
+		var l application.StandingsLeague
+		err := row.Scan(&l.ExternalID, &l.Season)
+		return l, err
+	})
+}
+
+// UpdateTeamStrengths actualiza teams.strength por ID externo del equipo.
+// Los equipos que no importamos se ignoran.
+func (r *Repository) UpdateTeamStrengths(ctx context.Context, provider string, strengths map[string]float64) (int, error) {
+	if len(strengths) == 0 {
+		return 0, nil
+	}
+	ids := make([]string, 0, len(strengths))
+	values := make([]float64, 0, len(strengths))
+	for id, value := range strengths {
+		ids = append(ids, id)
+		values = append(values, value)
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE teams t SET strength = v.strength
+		FROM unnest($2::text[], $3::numeric[]) AS v(external_id, strength)
+		JOIN external_refs x ON x.external_id = v.external_id
+		WHERE x.provider = $1 AND x.entity_type = 'team' AND x.entity_id = t.id
+		  AND t.strength IS DISTINCT FROM v.strength`, provider, ids, values)
+	if err != nil {
+		return 0, fmt.Errorf("events: actualizar fuerza de equipos: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+// HasFeaturedInPlay busca un evento destacado de este proveedor en juego, o
+// programado entre 3 horas atrás (por si se perdió el inicio) y 5 minutos
+// adelante.
+func (r *Repository) HasFeaturedInPlay(ctx context.Context, provider string, now time.Time) (bool, error) {
+	var found bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM events e
+			JOIN external_refs x ON x.entity_type = 'event' AND x.entity_id = e.id AND x.provider = $1
+			WHERE e.featured AND (
+				e.status IN ('LIVE', 'INTERRUPTED') OR
+				(e.status = 'SCHEDULED' AND e.start_at BETWEEN $2::timestamptz - interval '3 hours'
+				                                         AND $2::timestamptz + interval '5 minutes')
+			)
+		)`, provider, now).Scan(&found)
+	if err != nil {
+		return false, fmt.Errorf("events: buscar destacados en juego: %w", err)
+	}
+	return found, nil
+}
