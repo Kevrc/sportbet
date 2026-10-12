@@ -32,6 +32,9 @@ function setup(opts: {
       calls.update.push([id, c]);
       return (opts.update ?? (() => of(user(id))))(id, c);
     },
+    // El resumen del panel (AdminOverview) también consulta estas dos.
+    stats: () => of({ users: 0, betsPlaced: 0, betsSettled: 0, stakeCents: 0, payoutCents: 0 }),
+    audit: () => of({ items: [], page: 1, pageSize: 10, total: 0 }),
   };
   TestBed.configureTestingModule({
     imports: [AdminUsersPage],

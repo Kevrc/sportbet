@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { UserSummary } from '../../../core/api/models';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { ApiError } from '../../../core/http/error.interceptor';
+import { AdminOverview } from '../admin-overview';
 import { AdminUsersService, UserChanges } from '../admin-users.service';
 
 const PAGE_SIZE = 20;
@@ -16,7 +17,7 @@ const ERRORS: Record<string, string> = {
 
 @Component({
   selector: 'app-admin-users-page',
-  imports: [DatePipe],
+  imports: [DatePipe, AdminOverview],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './admin-users.page.html',
   styleUrl: './admin-users.page.scss',

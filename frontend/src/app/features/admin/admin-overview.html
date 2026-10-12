@@ -1,0 +1,55 @@
+<section class="overview" aria-labelledby="overview-title" [attr.aria-busy]="loading()">
+  <div class="title-row">
+    <h2 id="overview-title">Resumen</h2>
+    <button type="button" class="link" (click)="load()" [disabled]="loading()">Actualizar</button>
+  </div>
+
+  @if (error(); as msg) {
+    <p class="alert" role="alert">{{ msg }}</p>
+  }
+
+  @if (stats(); as s) {
+    <dl class="stats">
+      <div>
+        <dt>Usuarios</dt>
+        <dd>{{ s.users }}</dd>
+      </div>
+      <div>
+        <dt>Apuestas hechas</dt>
+        <dd>{{ s.betsPlaced }}</dd>
+      </div>
+      <div>
+        <dt>Apuestas liquidadas</dt>
+        <dd>{{ s.betsSettled }}</dd>
+      </div>
+      <div>
+        <dt>Total apostado</dt>
+        <dd>{{ money(s.stakeCents) }}</dd>
+      </div>
+      <div>
+        <dt>Total pagado</dt>
+        <dd>{{ money(s.payoutCents) }}</dd>
+      </div>
+      <div>
+        <dt>Resultado de la casa</dt>
+        <dd [class.negative]="houseResult() < 0">{{ money(houseResult()) }}</dd>
+      </div>
+    </dl>
+  }
+
+  <h3>Actividad reciente</h3>
+  @if (activity().length) {
+    <ol class="activity">
+      @for (e of activity(); track e.id) {
+        @let line = describe(e);
+        <li>
+          <span class="icon" aria-hidden="true">{{ line.icon }}</span>
+          <span class="text">{{ line.text }}</span>
+          <time [attr.datetime]="e.createdAt">{{ e.createdAt | date: 'dd/MM HH:mm' }}</time>
+        </li>
+      }
+    </ol>
+  } @else if (!loading()) {
+    <p class="empty">Todavía no hay apuestas registradas.</p>
+  }
+</section>

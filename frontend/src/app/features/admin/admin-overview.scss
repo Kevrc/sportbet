@@ -1,0 +1,134 @@
+@use '../betting/theme' as theme;
+
+:host {
+  @include theme.tokens;
+  display: block;
+  margin-bottom: 1.5rem;
+}
+
+.overview {
+  @include theme.surface-pair;
+  padding: 1rem;
+  border: 1px solid var(--sportbet-borde);
+  border-radius: 12px;
+
+  &[aria-busy='true'] {
+    opacity: 0.7;
+  }
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+h2,
+h3 {
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+h3 {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+.link {
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--sportbet-azul-texto);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--sportbet-texto-deshabilitado);
+    cursor: progress;
+  }
+
+  &:focus-visible {
+    @include theme.focus-ring;
+  }
+}
+
+.alert {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--sportbet-error-fondo);
+  color: var(--sportbet-error-texto);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+
+  div {
+    @include theme.elevated-pair;
+    padding: 0.75rem;
+    border-radius: 10px;
+  }
+
+  dt {
+    font-size: 0.8rem;
+    color: var(--sportbet-texto-secundario);
+  }
+
+  dd {
+    margin: 0.25rem 0 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .negative {
+    color: var(--sportbet-error-texto);
+  }
+}
+
+.activity {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--sportbet-borde);
+    font-size: 0.9rem;
+  }
+
+  li:last-child {
+    border-bottom: 0;
+  }
+
+  time {
+    font-size: 0.8rem;
+    color: var(--sportbet-texto-secundario);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.empty {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: var(--sportbet-texto-secundario);
+}
