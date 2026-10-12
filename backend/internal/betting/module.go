@@ -13,7 +13,7 @@ import (
 // Register registra las rutas, suscripciones al bus y workers del módulo.
 func Register(r chi.Router, d app.Deps) {
 	repo := infrastructure.NewRepository()
-	useCase := application.NewPlaceBetUseCase(d.DB, d.Markets, d.Wallet, repo, d.Clock)
+	useCase := application.NewPlaceBetUseCase(d.DB, d.Markets, d.Wallet, repo, d.Clock, d.Bus)
 
 	h := presentation.NewBettingHandler(useCase, d.DB)
 	h.RegisterRoutes(r, d.Auth)

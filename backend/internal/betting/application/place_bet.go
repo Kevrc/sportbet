@@ -11,6 +11,7 @@ import (
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/db"
 	"sportbet/internal/shared/errs"
+	"sportbet/internal/shared/eventbus"
 	"sportbet/internal/shared/money"
 )
 
@@ -46,14 +47,16 @@ type PlaceBetUseCase struct {
 	wallet  contracts.WalletService
 	repo    Repository
 	clock   func() time.Time
+	bus     eventbus.Bus
 }
 
 type Repository interface {
 	InsertBet(ctx context.Context, q db.Querier, bet *domain.Bet, selections []domain.BetSelection) (string, error)
 }
 
-func NewPlaceBetUseCase(pool *pgxpool.Pool, markets contracts.MarketReader, wallet contracts.WalletService, repo Repository, clock func() time.Time) *PlaceBetUseCase {
-	return &PlaceBetUseCase{pool: pool, markets: markets, wallet: wallet, repo: repo, clock: clock}
+// NewPlaceBetUseCase recibe el bus para anunciar BetPlaced; con nil no publica.
+func NewPlaceBetUseCase(pool *pgxpool.Pool, markets contracts.MarketReader, wallet contracts.WalletService, repo Repository, clock func() time.Time, bus eventbus.Bus) *PlaceBetUseCase {
+	return &PlaceBetUseCase{pool: pool, markets: markets, wallet: wallet, repo: repo, clock: clock, bus: bus}
 }
 
 func (uc *PlaceBetUseCase) Execute(ctx context.Context, cmd PlaceBetCommand) (PlaceBetResult, error) {
@@ -155,6 +158,14 @@ func (uc *PlaceBetUseCase) Execute(ctx context.Context, cmd PlaceBetCommand) (Pl
 
 	if err != nil {
 		return PlaceBetResult{}, fmt.Errorf("place bet: %w", err)
+	}
+
+	// Se anuncia después del COMMIT (regla del bus): auditoría y estadísticas del admin.
+	if uc.bus != nil {
+		uc.bus.Publish(ctx, eventbus.BetPlaced{
+			BetID: betID, UserID: cmd.UserID, Stake: cmd.Stake, TotalOdd: totalOdd,
+			Selections: len(cmd.Selections), PlacedAt: uc.clock(),
+		})
 	}
 
 	return PlaceBetResult{

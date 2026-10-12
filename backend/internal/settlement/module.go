@@ -20,7 +20,7 @@ const SweepInterval = 5 * time.Minute
 // Register registra las rutas, suscripciones al bus y workers del módulo.
 func Register(r chi.Router, d app.Deps) {
 	repo := infrastructure.NewRepository(d.DB)
-	settler := application.NewSettler(d.DB, d.Wallet, d.Results, repo, d.Clock)
+	settler := application.NewSettler(d.DB, d.Wallet, d.Results, repo, d.Clock, d.Bus)
 
 	// API Handler
 	h := presentation.NewSettlementHandler(settler)
