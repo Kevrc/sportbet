@@ -129,7 +129,7 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 | `GET /me` | ✅ Hecho y probado | [`users/presentation/handlers.go`](../backend/internal/users/presentation/handlers.go) |
 | `GET /admin/users` (paginado) y `PATCH /admin/users/{id}` (rol y estado). Un admin no puede quitarse el rol ni bloquearse (409 `CANNOT_MODIFY_SELF`) | ✅ Hecho y probado | [`users/application/service.go`](../backend/internal/users/application/service.go) |
 | Admin inicial al arrancar (`ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`), idempotente y sin promover usuarios existentes | ✅ Hecho y probado | [`auth/application/service.go`](../backend/internal/auth/application/service.go) |
-| `GET /admin/stats` y `GET /admin/audit` | ✂️ Recortado (2º en el orden de recorte del plan): nadie publica `BetPlaced` ni `BetSettled` en el bus | — |
+| `GET /admin/stats` y `GET /admin/audit`: el módulo admin escucha `BetPlaced` y `BetSettled` en el bus y los guarda en `audit_log`; el panel muestra cifras y actividad reciente | ✅ Hecho y probado | [`admin/`](../backend/internal/admin/) |
 | Prueba de carga (k6) y análisis PASA | ✅ Hecho y medido | [`loadtest/`](../loadtest/README.md) |
 
 ### Riesgos y mitigaciones
