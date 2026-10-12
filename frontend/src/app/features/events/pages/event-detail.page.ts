@@ -4,10 +4,11 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 import { inject } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { catchError, of, switchMap, tap } from 'rxjs';
+import { catchError, debounceTime, filter, of, switchMap, tap } from 'rxjs';
 
-import { EventDetail, Market, Selection } from '../../../core/api/models';
+import { EventDetail, Market, MatchEvent, Selection } from '../../../core/api/models';
 import { ApiError } from '../../../core/http/error.interceptor';
+import { LiveEventsService } from '../../../core/live/live-events.service';
 import { BetSlipComponent, BetSlipStore, formatOdd } from '../../betting/public-api';
 import {
   formatRound,
@@ -19,6 +20,7 @@ import {
 } from '../events-format';
 import { EventsService } from '../events.service';
 import { LiveScoresStore } from '../live-scores.store';
+import { MatchTimeline } from '../match-timeline';
 import { TeamCrest } from '../team-crest';
 
 // Las fechas del detalle se muestran en español (día y mes con nombre).
@@ -26,7 +28,7 @@ registerLocaleData(localeEs);
 
 @Component({
   selector: 'app-event-detail-page',
-  imports: [DatePipe, RouterLink, BetSlipComponent, TeamCrest],
+  imports: [DatePipe, RouterLink, BetSlipComponent, TeamCrest, MatchTimeline],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './event-detail.page.html',
   styleUrl: './event-detail.page.scss',
@@ -36,6 +38,7 @@ registerLocaleData(localeEs);
 export class EventDetailPage {
   private readonly service = inject(EventsService);
   private readonly document = inject(DOCUMENT);
+  private readonly liveEvents = inject(LiveEventsService);
   protected readonly live = inject(LiveScoresStore);
   protected readonly slip = inject(BetSlipStore);
 
@@ -47,6 +50,8 @@ export class EventDetailPage {
   protected readonly error = signal<string | null>(null);
   protected readonly notFound = signal(false);
   private readonly attempt = signal(0);
+  /** Sucesos del partido; se recargan cuando el SSE avisa un cambio de este partido. */
+  protected readonly timeline = signal<MatchEvent[]>([]);
 
   /** El evento cargado con el marcador y estado en vivo encima. */
   protected readonly view = computed(() => {
@@ -89,7 +94,22 @@ export class EventDetailPage {
       )
       .subscribe((e) => {
         this.event.set(e);
+        this.timeline.set(e?.timeline ?? []);
         this.loading.set(false);
+      });
+
+    // Un gol o una tarjeta llegan como match.updated del partido: se recarga
+    // solo la línea de tiempo (el marcador ya lo aplica LiveScoresStore).
+    this.liveEvents
+      .on('match.updated')
+      .pipe(
+        filter((m) => m.eventId === this.id()),
+        debounceTime(500),
+        switchMap(() => this.service.get(this.id()).pipe(catchError(() => of(null)))),
+        takeUntilDestroyed(),
+      )
+      .subscribe((e) => {
+        if (e) this.timeline.set(e.timeline ?? []);
       });
   }
 

@@ -65,6 +65,9 @@
           }
         </p>
       </header>
+      @if (timeline().length || e.status === 'LIVE' || e.status === 'INTERRUPTED') {
+        <app-match-timeline [events]="timeline()" [home]="e.home.name" [away]="e.away.name" />
+      }
 
       @for (m of e.markets; track m.id) {
         @let reason = lockReason(m);
