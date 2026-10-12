@@ -37,7 +37,7 @@ h1 {
   align-items: flex-end;
   gap: 16px;
   margin-bottom: 1.25rem;
-  padding: 1rem;
+  padding: 16px 20px;
   background: var(--sportbet-superficie);
   color: var(--sportbet-texto);
   border: 1px solid var(--sportbet-borde);
@@ -49,9 +49,11 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.2;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--sportbet-texto-secundario);
     background: transparent;
   }
@@ -59,13 +61,31 @@ h1 {
   .check {
     flex-direction: row;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
     height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--sportbet-borde);
+    border-radius: 999px;
+    background: var(--sportbet-superficie);
+    color: var(--sportbet-texto-secundario);
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+
+    &:has(input:checked) {
+      border-color: var(--sportbet-error-texto);
+      background: var(--sportbet-error-fondo);
+      color: var(--sportbet-error-texto);
+    }
   }
 
   .check input {
-    width: 1.15rem;
-    height: 1.15rem;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    margin: 0;
     accent-color: var(--sportbet-rojo);
   }
 
@@ -75,15 +95,19 @@ h1 {
     height: 40px;
     margin: 0;
     padding: 0 12px;
-    font: inherit;
-    font-weight: 400;
-    color: var(--sportbet-texto);
     border: 1px solid var(--sportbet-borde);
     border-radius: 8px;
-    background: var(--sportbet-superficie);
+    background-color: var(--sportbet-superficie);
+    color: var(--sportbet-texto);
+    font: inherit;
+    font-weight: 600;
     transition:
-      border-color 180ms ease,
-      box-shadow 180ms ease;
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+
+    &:hover {
+      border-color: var(--sportbet-azul);
+    }
 
     &::placeholder {
       color: var(--sportbet-texto-deshabilitado);
@@ -92,10 +116,42 @@ h1 {
 
     &:focus-visible {
       border-color: var(--sportbet-azul);
-      outline: 2px solid var(--sportbet-azul);
-      outline-offset: 1px;
+      outline: 0;
+      box-shadow: 0 0 0 3px var(--sportbet-azul-fondo);
     }
 
+    &:disabled {
+      background: var(--sportbet-superficie-elevada);
+      color: var(--sportbet-texto-deshabilitado);
+    }
+  }
+
+  select {
+    appearance: none;
+    padding-right: 36px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--sportbet-texto-secundario) 50%),
+      linear-gradient(135deg, var(--sportbet-texto-secundario) 50%, transparent 50%);
+    background-position:
+      calc(100% - 16px) 17px,
+      calc(100% - 11px) 17px;
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+  }
+
+  input[type='date'] {
+    color-scheme: light;
+
+    &::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 150ms ease;
+    }
+
+    &::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
+    }
   }
 }
 
