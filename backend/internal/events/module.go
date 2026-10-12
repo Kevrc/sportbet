@@ -30,6 +30,10 @@ import (
 // proveedor que cobra por llamada.
 const resultsEvery = 10 * time.Minute
 
+// timelinesPerRun limita las llamadas por ciclo para respetar el límite de
+// 10 por minuto del plan gratuito y repartir el gasto durante el día.
+const timelinesPerRun = 3
+
 func Register(r chi.Router, d app.Deps) {
 	service := application.NewService(infrastructure.NewRepository(d.DB), d.Bus)
 	presentation.Register(r, service, d.Bus, d.Log, d.Auth)
@@ -106,6 +110,11 @@ func Register(r chi.Router, d app.Deps) {
 			calls, err := service.ConfirmResults(ctx, d.Fixtures.Name(), d.Fixtures, d.Config.FeaturedLeagueIDs, now, cutoff, !replay)
 			if err != nil {
 				d.Log.ErrorContext(ctx, "falló la confirmación de resultados", "calls", calls, "err", err)
+			}
+			// Línea de tiempo completa de los partidos ya terminados: una llamada
+			// por partido, como mucho timelinesPerRun por ciclo.
+			if calls, err := service.FillTimelines(ctx, d.Fixtures.Name(), d.Fixtures, now, timelinesPerRun); err != nil {
+				d.Log.ErrorContext(ctx, "falló la carga de líneas de tiempo", "calls", calls, "err", err)
 			}
 		}
 		syncFixtures()

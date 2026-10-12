@@ -89,6 +89,8 @@ type Repository interface {
 	ListStandingsLeagues(context.Context, string) ([]StandingsLeague, error)
 	UpdateTeamStrengths(context.Context, string, map[string]float64) (int, error)
 	HasFeaturedInPlay(context.Context, string, time.Time) (bool, error)
+	ListTimelinePending(context.Context, string, time.Time, int) ([]string, error)
+	MarkTimelineFetched(context.Context, string, string, time.Time) error
 }
 
 type Service struct {

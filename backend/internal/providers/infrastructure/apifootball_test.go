@@ -330,3 +330,28 @@ func TestLiveScoresIncludeMatchEvents(t *testing.T) {
 		t.Fatalf("cambio = %+v", ev[2])
 	}
 }
+
+func TestFixtureResultIncludesMatchEvents(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("id") != "1557419" {
+			t.Errorf("query = %s", r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"errors":[],"response":[{
+			"fixture": {"id": 1557419, "date": "2026-10-10T14:00:00+00:00", "status": {"short": "FT"}},
+			"league": {"id": 39, "name": "Premier League", "country": "England"},
+			"teams": {"home": {"id": 49, "name": "Chelsea"}, "away": {"id": 35, "name": "Bournemouth"}},
+			"goals": {"home": 5, "away": 1},
+			"score": {"fulltime": {"home": 5, "away": 1}},
+			"events": [
+				{"time": {"elapsed": 2}, "team": {"id": 49}, "player": {"name": "Jordan Henderson"}, "assist": {"name": null}, "type": "Goal", "detail": "Normal Goal"},
+				{"time": {"elapsed": 10}, "team": {"id": 35}, "player": {"name": "Marcus Tavernier"}, "assist": {"name": null}, "type": "Card", "detail": "Yellow Card"}
+			]
+		}]}`))
+	}))
+	defer server.Close()
+	provider, _ := NewAPIFootball(server.URL, "test-key", server.Client())
+	f, err := provider.FixtureResult(context.Background(), "1557419")
+	if err != nil || len(f.Events) != 2 || f.Events[0].Side != contracts.SideHome || f.Events[1].Type != contracts.MatchEventCard {
+		t.Fatalf("fixture = %+v, err = %v", f, err)
+	}
+}

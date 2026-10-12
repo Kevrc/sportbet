@@ -368,6 +368,9 @@ func (r *Repository) upsertFixture(
 		if err := insertExternalRef(ctx, tx, provider, "event", eventID, fixture.ExternalID); err != nil {
 			return nil, err
 		}
+		if err := replaceMatchEvents(ctx, tx, eventID, fixture.Events); err != nil {
+			return nil, err
+		}
 		event, err := scanEvent(tx.QueryRow(ctx, eventSelect+`WHERE e.id = $1::uuid`, eventID))
 		if err != nil {
 			return nil, fmt.Errorf("events: leer evento importado: %w", err)
@@ -415,6 +418,9 @@ func (r *Repository) upsertFixture(
 		fixture.Round, fixture.VenueName, fixture.VenueCity)
 	if err != nil {
 		return nil, fmt.Errorf("events: actualizar fixture: %w", err)
+	}
+	if err := replaceMatchEvents(ctx, tx, eventID, fixture.Events); err != nil {
+		return nil, err
 	}
 	event, err := scanEvent(tx.QueryRow(ctx, eventSelect+`WHERE e.id = $1::uuid`, eventID))
 	if err != nil {
@@ -632,4 +638,33 @@ func (r *Repository) HasFeaturedInPlay(ctx context.Context, provider string, now
 		return false, fmt.Errorf("events: buscar destacados en juego: %w", err)
 	}
 	return found, nil
+}
+
+// ListTimelinePending devuelve los partidos terminados recientes de este
+// proveedor cuya línea de tiempo completa todavía no se pidió.
+func (r *Repository) ListTimelinePending(ctx context.Context, provider string, since time.Time, limit int) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT x.external_id
+		FROM events e
+		JOIN external_refs x ON x.entity_type = 'event' AND x.entity_id = e.id AND x.provider = $1
+		WHERE e.status = 'FINISHED' AND e.timeline_fetched_at IS NULL AND e.start_at >= $2
+		ORDER BY e.start_at DESC
+		LIMIT $3`, provider, since, limit)
+	if err != nil {
+		return nil, fmt.Errorf("events: buscar líneas de tiempo pendientes: %w", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
+// MarkTimelineFetched registra que ya se pidió la línea de tiempo del partido.
+func (r *Repository) MarkTimelineFetched(ctx context.Context, provider, externalID string, at time.Time) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE events e SET timeline_fetched_at = $3
+		FROM external_refs x
+		WHERE x.entity_type = 'event' AND x.entity_id = e.id AND x.provider = $1 AND x.external_id = $2`,
+		provider, externalID, at)
+	if err != nil {
+		return fmt.Errorf("events: marcar línea de tiempo pedida: %w", err)
+	}
+	return nil
 }
