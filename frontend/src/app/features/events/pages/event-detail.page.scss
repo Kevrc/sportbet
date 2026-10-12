@@ -8,7 +8,7 @@
   font-family: Inter, 'Segoe UI', sans-serif;
 }
 
-:is(.back, .selection, button.secondary):focus-visible {
+:is(.back, button.secondary):focus-visible {
   @include theme.focus-ring;
 }
 
@@ -265,8 +265,13 @@
   &:hover:not(:disabled) {
     background: var(--sportbet-superficie-elevada);
     color: var(--sportbet-texto);
-    border-color: var(--sportbet-azul);
+    border-color: var(--sportbet-exito-texto);
     transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px var(--sportbet-seleccion-foco);
   }
 
   &:disabled {
@@ -283,14 +288,20 @@
   }
 
   &.selected {
-    background: var(--sportbet-rojo);
-    border-color: var(--sportbet-rojo);
-    box-shadow: inset 0 0 0 1px var(--sportbet-rojo-hover);
+    background: var(--sportbet-exito-texto);
+    border-color: var(--sportbet-exito-texto);
+    box-shadow: none;
+
+    &::before {
+      flex: none;
+      color: var(--sportbet-superficie);
+      content: '✓';
+    }
   }
 
   &.selected:hover:not(:disabled) {
-    background: var(--sportbet-rojo-hover);
-    border-color: var(--sportbet-rojo-hover);
+    background: var(--sportbet-seleccion-hover);
+    border-color: var(--sportbet-seleccion-hover);
   }
 
   &.won {
