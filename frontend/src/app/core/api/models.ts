@@ -91,6 +91,8 @@ export interface League {
 export interface Team {
   id: string;
   name: string;
+  /** Escudo (https); null si el proveedor no lo entrega, p. ej. en el replay. */
+  logoUrl?: string | null;
 }
 export interface SportEvent {
   id: string;

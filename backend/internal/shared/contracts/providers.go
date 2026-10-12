@@ -12,6 +12,8 @@ import (
 type ProviderTeam struct {
 	ExternalID string
 	Name       string
+	// LogoURL es la URL https del escudo, o vacío si el proveedor no la da.
+	LogoURL string
 }
 
 type ProviderLeague struct {
