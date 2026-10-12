@@ -1,26 +1,83 @@
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 60px;
+  box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  background: #2F6FDB;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(27, 31, 42, 0.15);
+}
+.topbar-content {
+  display: flex;
+  width: 100%;
+  max-width: 1148px;
+  box-sizing: border-box;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #ddd;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 .brand {
-  font-weight: 700;
+  color: #FFFFFF;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 800;
   text-decoration: none;
-  color: inherit;
 }
 nav {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem 1rem;
   align-items: center;
+  gap: 4px;
+}
+nav a {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: transparent;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 180ms ease;
+}
+nav a:visited {
+  color: #FFFFFF;
+}
+nav a:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+}
+nav a:focus-visible,
+nav button:focus-visible,
+.brand:focus-visible {
+  outline: 2px solid #FFFFFF;
+  outline-offset: 2px;
 }
 nav a.active {
-  font-weight: 600;
+  box-shadow: inset 0 -3px #E0A526;
+  font-weight: 800;
+}
+nav button,
+nav a.login {
+  padding: 8px 16px;
+  border: 1px solid #FFFFFF;
+  border-radius: 8px;
+  background: transparent;
+  color: #FFFFFF;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+nav button:hover,
+nav a.login:hover {
+  background: #FFFFFF;
+  color: #2F6FDB;
 }
 main {
   padding: 1rem;

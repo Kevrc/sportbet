@@ -1,18 +1,20 @@
 <header class="topbar">
-  <a class="brand" routerLink="/events">SportBet</a>
-  <nav>
-    <a routerLink="/events" routerLinkActive="active">Eventos</a>
-    @if (auth.isAuthenticated()) {
-      <a routerLink="/bets" routerLinkActive="active">Mis apuestas</a>
-      <a routerLink="/wallet" routerLinkActive="active">Billetera</a>
-      @if (auth.isAdmin()) {
-        <a routerLink="/admin" routerLinkActive="active">Admin</a>
+  <div class="topbar-content">
+    <a class="brand" routerLink="/events">SportBet</a>
+    <nav>
+      <a routerLink="/events" routerLinkActive="active">Eventos</a>
+      @if (auth.isAuthenticated()) {
+        <a routerLink="/bets" routerLinkActive="active">Mis apuestas</a>
+        <a routerLink="/wallet" routerLinkActive="active">Billetera</a>
+        @if (auth.isAdmin()) {
+          <a routerLink="/admin" routerLinkActive="active">Admin</a>
+        }
+        <button type="button" (click)="logout()">Salir</button>
+      } @else {
+        <a class="login" routerLink="/auth/login" routerLinkActive="active">Entrar</a>
       }
-      <button type="button" (click)="logout()">Salir</button>
-    } @else {
-      <a routerLink="/auth/login" routerLinkActive="active">Entrar</a>
-    }
-  </nav>
+    </nav>
+  </div>
 </header>
 <main>
   <router-outlet />
