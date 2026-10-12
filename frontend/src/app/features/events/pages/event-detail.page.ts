@@ -9,7 +9,14 @@ import { catchError, of, switchMap, tap } from 'rxjs';
 import { EventDetail, Market, Selection } from '../../../core/api/models';
 import { ApiError } from '../../../core/http/error.interceptor';
 import { BetSlipComponent, BetSlipStore, formatOdd } from '../../betting/public-api';
-import { marketLockReason, marketTitle, scoreText, statusLabel } from '../events-format';
+import {
+  formatRound,
+  formatVenue,
+  marketLockReason,
+  marketTitle,
+  scoreText,
+  statusLabel,
+} from '../events-format';
 import { EventsService } from '../events.service';
 import { LiveScoresStore } from '../live-scores.store';
 import { TeamCrest } from '../team-crest';
@@ -53,6 +60,8 @@ export class EventDetailPage {
   });
 
   protected readonly statusText = statusLabel;
+  protected readonly roundText = formatRound;
+  protected readonly venueText = formatVenue;
   protected readonly title = marketTitle;
   protected readonly odd = formatOdd;
 

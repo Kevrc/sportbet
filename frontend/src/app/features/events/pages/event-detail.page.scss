@@ -63,10 +63,22 @@
 }
 
 .league,
-.meta {
+.meta,
+.venue {
   margin: 0;
   font-size: 0.85rem;
   color: #5b5b66;
+}
+
+.venue {
+  margin-bottom: 0.25rem;
+}
+
+.league-logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: -4px;
 }
 
 .match {

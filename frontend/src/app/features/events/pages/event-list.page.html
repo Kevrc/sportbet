@@ -71,8 +71,32 @@
   @for (g of groups(); track g.league.id) {
     <section class="league" [attr.aria-label]="g.league.name">
       <h2>
+        @if (g.league.logoUrl) {
+          <img
+            class="league-logo"
+            [src]="g.league.logoUrl"
+            alt=""
+            width="22"
+            height="22"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+          />
+        }
         {{ g.league.name }}
-        <span class="country">{{ g.league.country }}</span>
+        <span class="country">
+          @if (g.league.flagUrl) {
+            <img
+              class="flag"
+              [src]="g.league.flagUrl"
+              alt=""
+              width="16"
+              height="12"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            />
+          }
+          {{ g.league.country }}
+        </span>
       </h2>
       <ul>
         @for (e of g.events; track e.id) {

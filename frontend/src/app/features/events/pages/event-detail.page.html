@@ -21,7 +21,23 @@
   <div class="main">
     @if (view(); as e) {
       <header class="hero">
-        <p class="league">{{ e.league.name }} · {{ e.league.country }}</p>
+        <p class="league">
+          @if (e.league.logoUrl) {
+            <img
+              class="league-logo"
+              [src]="e.league.logoUrl"
+              alt=""
+              width="18"
+              height="18"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            />
+          }
+          {{ e.league.name }} · {{ e.league.country }}
+          @if (roundText(e.round); as r) {
+            · {{ r }}
+          }
+        </p>
         <div class="match">
           <span class="team"><app-team-crest [team]="e.home" size="lg" />{{ e.home.name }}</span>
           <span class="center">
@@ -33,6 +49,9 @@
           </span>
           <span class="team"><app-team-crest [team]="e.away" size="lg" />{{ e.away.name }}</span>
         </div>
+        @if (venueText(e.venue); as v) {
+          <p class="venue">🏟️ {{ v }}</p>
+        }
         <p class="meta">
           {{ e.startAt | date: "EEEE d 'de' MMMM, HH:mm" : undefined : 'es' }} ·
           <span class="badge" [class.live]="e.status === 'LIVE'">
