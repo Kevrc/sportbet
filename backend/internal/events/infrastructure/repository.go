@@ -185,9 +185,9 @@ func (r *Repository) ImportFixtures(ctx context.Context, provider string, now ti
 	return changes, nil
 }
 
-func (r *Repository) ListResultCandidates(ctx context.Context, provider string, cutoff time.Time) ([]string, error) {
+func (r *Repository) ListResultCandidates(ctx context.Context, provider string, cutoff time.Time) ([]application.ResultCandidate, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT x.external_id
+		SELECT x.external_id, e.start_at
 		FROM external_refs x
 		JOIN events e ON e.id = x.entity_id
 		WHERE x.provider = $1 AND x.entity_type = 'event'
@@ -201,13 +201,13 @@ func (r *Repository) ListResultCandidates(ctx context.Context, provider string, 
 		return nil, fmt.Errorf("events: buscar resultados pendientes: %w", err)
 	}
 	defer rows.Close()
-	ids := make([]string, 0)
+	ids := make([]application.ResultCandidate, 0)
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var c application.ResultCandidate
+		if err := rows.Scan(&c.ExternalID, &c.StartAt); err != nil {
 			return nil, fmt.Errorf("events: leer referencia pendiente: %w", err)
 		}
-		ids = append(ids, id)
+		ids = append(ids, c)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("events: recorrer resultados pendientes: %w", err)
@@ -230,7 +230,9 @@ func (r *Repository) ApplyLiveScores(ctx context.Context, provider string, now t
 			WHERE x.provider = $1 AND x.entity_type = 'event' AND x.external_id = $2`, provider, score.ExternalID).
 			Scan(&eventID)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errs.New(errs.ErrNotFound, "EVENT_NOT_IMPORTED", "marcador recibido para un evento no importado")
+			// fixtures?live=all trae todos los partidos en juego del mundo; los
+			// de ligas que no importamos se ignoran sin descartar el resto.
+			continue
 		}
 		if err != nil {
 			return nil, fmt.Errorf("events: localizar evento del marcador: %w", err)

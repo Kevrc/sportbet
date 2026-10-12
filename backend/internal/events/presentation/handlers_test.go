@@ -33,7 +33,7 @@ func (r *repositoryStub) SetFeatured(context.Context, string, bool) (application
 func (r *repositoryStub) ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture, bool) ([]application.Change, error) {
 	return nil, nil
 }
-func (r *repositoryStub) ListResultCandidates(context.Context, string, time.Time) ([]string, error) {
+func (r *repositoryStub) ListResultCandidates(context.Context, string, time.Time) ([]application.ResultCandidate, error) {
 	return nil, nil
 }
 func (r *repositoryStub) ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]application.Change, error) {

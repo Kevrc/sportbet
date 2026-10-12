@@ -76,7 +76,7 @@ type Repository interface {
 	GetEvent(context.Context, string) (Event, error)
 	SetFeatured(context.Context, string, bool) (Event, error)
 	ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture, bool) ([]Change, error)
-	ListResultCandidates(context.Context, string, time.Time) ([]string, error)
+	ListResultCandidates(context.Context, string, time.Time) ([]ResultCandidate, error)
 	ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]Change, error)
 }
 
@@ -171,7 +171,13 @@ func (s *Service) RefreshResult(ctx context.Context, provider string, now time.T
 	return nil
 }
 
-func (s *Service) ListResultCandidates(ctx context.Context, provider string, cutoff time.Time) ([]string, error) {
+// ResultCandidate es un evento empezado cuyo resultado hay que confirmar.
+type ResultCandidate struct {
+	ExternalID string
+	StartAt    time.Time
+}
+
+func (s *Service) ListResultCandidates(ctx context.Context, provider string, cutoff time.Time) ([]ResultCandidate, error) {
 	if provider == "" {
 		return nil, errs.New(errs.ErrValidation, "INVALID_PROVIDER", "el proveedor es obligatorio")
 	}
@@ -182,13 +188,17 @@ func (s *Service) ApplyLiveScores(ctx context.Context, provider string, now time
 	if provider == "" {
 		return errs.New(errs.ErrValidation, "INVALID_PROVIDER", "el proveedor es obligatorio")
 	}
+	// Un marcador inválido se descarta solo: no debe impedir que se guarden
+	// los demás partidos del mismo lote.
+	valid := make([]contracts.LiveScore, 0, len(scores))
 	for _, score := range scores {
 		if score.ExternalID == "" || score.HomeScore < 0 || score.AwayScore < 0 || score.Minute < 0 ||
 			(score.Status != contracts.MatchLive && score.Status != contracts.MatchInterrupted) {
-			return errs.New(errs.ErrValidation, "INVALID_LIVE_SCORE", "el proveedor entregó un marcador en vivo inválido")
+			continue
 		}
+		valid = append(valid, score)
 	}
-	changes, err := s.repository.ApplyLiveScores(ctx, provider, now, scores)
+	changes, err := s.repository.ApplyLiveScores(ctx, provider, now, valid)
 	if err != nil {
 		return err
 	}
