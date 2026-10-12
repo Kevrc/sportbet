@@ -288,6 +288,7 @@ func convertFixture(item apiFixture, useFulltime bool) (contracts.ProviderFixtur
 			Season: item.League.Season, LogoURL: safeLogoURL(item.League.Logo), FlagURL: safeLogoURL(item.League.Flag),
 		},
 		Round:     item.League.Round,
+		Events:    convertEvents(item),
 		VenueName: item.Fixture.Venue.Name,
 		VenueCity: item.Fixture.Venue.City,
 		Home:      contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Home.ID), Name: item.Teams.Home.Name, LogoURL: safeLogoURL(item.Teams.Home.Logo)},

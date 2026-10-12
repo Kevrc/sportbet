@@ -243,3 +243,47 @@ func TestApplyLiveScoresStoresMatchEvents(t *testing.T) {
 		t.Fatalf("timeline = %+v", event.Timeline)
 	}
 }
+
+func TestTimelinePendingAndEventsFromResult(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	repo := infrastructure.NewRepository(pool)
+	now := time.Now().UTC()
+	two, one := 2, 1
+	finished := contracts.ProviderFixture{
+		ExternalID: "600", StartAt: now.Add(-3 * time.Hour), Status: contracts.MatchFinished,
+		HomeScore: &two, AwayScore: &one,
+		League: contracts.ProviderLeague{ExternalID: "39", Name: "Premier"},
+		Home:   contracts.ProviderTeam{ExternalID: "49", Name: "Chelsea"},
+		Away:   contracts.ProviderTeam{ExternalID: "35", Name: "Bournemouth"},
+	}
+	// Como llega de la consulta por fecha: terminado y sin sucesos.
+	if _, err := repo.ImportFixtures(ctx, "apifootball", now, []contracts.ProviderFixture{finished}, false); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := repo.ListTimelinePending(ctx, "apifootball", now.Add(-36*time.Hour), 3)
+	if err != nil || len(pending) != 1 || pending[0] != "600" {
+		t.Fatalf("pendientes = %v, err = %v", pending, err)
+	}
+
+	// Como llega de la consulta por ID: con sucesos (FINISHED → FINISHED).
+	finished.Events = []contracts.MatchEvent{
+		{Minute: 2, Side: contracts.SideHome, Type: contracts.MatchEventGoal, Detail: "Normal Goal", Player: "Henderson"},
+		{Minute: 90, Extra: 4, Side: contracts.SideAway, Type: contracts.MatchEventGoal, Detail: "Normal Goal", Player: "Evanilson"},
+	}
+	if _, err := repo.ImportFixtures(ctx, "apifootball", now, []contracts.ProviderFixture{finished}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.MarkTimelineFetched(ctx, "apifootball", "600", now); err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	_ = pool.QueryRow(ctx, `SELECT id::text FROM events`).Scan(&id)
+	event, err := repo.GetEvent(ctx, id)
+	if err != nil || len(event.Timeline) != 2 || event.Timeline[1].Extra != 4 {
+		t.Fatalf("timeline = %+v, err = %v", event.Timeline, err)
+	}
+	if pending, _ := repo.ListTimelinePending(ctx, "apifootball", now.Add(-36*time.Hour), 3); len(pending) != 0 {
+		t.Fatalf("ya pedido, no debe seguir pendiente: %v", pending)
+	}
+}

@@ -69,3 +69,9 @@ func (r *repositoryStub) UpdateTeamStrengths(context.Context, string, map[string
 func (r *repositoryStub) HasFeaturedInPlay(context.Context, string, time.Time) (bool, error) {
 	return false, nil
 }
+func (r *repositoryStub) ListTimelinePending(context.Context, string, time.Time, int) ([]string, error) {
+	return nil, nil
+}
+func (r *repositoryStub) MarkTimelineFetched(context.Context, string, string, time.Time) error {
+	return nil
+}

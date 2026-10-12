@@ -140,6 +140,7 @@ func (p *ReplayProvider) FixtureResult(ctx context.Context, externalID string) (
 	fixture.Status = matchStatus(frame.Status)
 	fixture.HomeScore = intPointer(frame.Home)
 	fixture.AwayScore = intPointer(frame.Away)
+	fixture.Events = p.eventsUntil(frame.OffsetSeconds)
 	return fixture, nil
 }
 

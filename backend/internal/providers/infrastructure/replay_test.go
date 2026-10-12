@@ -99,3 +99,34 @@ func TestReplayLiveScoresAccumulateEventsUntilCurrentFrame(t *testing.T) {
 		t.Fatalf("minuto 2: deben acumularse los dos sucesos: %+v", scores)
 	}
 }
+
+func TestReplayFixtureResultIncludesEvents(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "replay.json")
+	data := `{
+		"fixture": {
+			"externalId": "fixture-1",
+			"league": {"externalId": "league-1", "name": "Liga"},
+			"home": {"externalId": "home-1", "name": "Local"},
+			"away": {"externalId": "away-1", "name": "Visitante"}
+		},
+		"frames": [
+			{"offsetSeconds": 0, "status": "NS", "home": 0, "away": 0, "minute": 0},
+			{"offsetSeconds": 60, "status": "FT", "home": 1, "away": 0, "minute": 90,
+			 "events": [{"minute": 90, "extra": 3, "side": "HOME", "type": "GOAL", "detail": "Normal Goal", "player": "Rojas"}]}
+		]
+	}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Date(2026, 10, 9, 18, 0, 0, 0, time.UTC)
+	now := start
+	provider, err := NewReplayProvider(path, 1, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = start.Add(2 * time.Minute)
+	f, err := provider.FixtureResult(context.Background(), "fixture-1")
+	if err != nil || f.Status != contracts.MatchFinished || len(f.Events) != 1 || f.Events[0].Extra != 3 {
+		t.Fatalf("fixture = %+v, err = %v", f, err)
+	}
+}
