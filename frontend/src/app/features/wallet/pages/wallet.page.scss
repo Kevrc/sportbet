@@ -12,46 +12,54 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  letter-spacing: -0.035em;
 }
 
 h2 {
+  margin: 1.5rem 0 0.65rem;
   font-size: 1.1rem;
-  margin: 1.5rem 0 0.5rem;
 }
 
 .subtitle,
 .muted {
-  color: #5b5b66;
+  @include theme.secondary-surface-pair;
 }
 
 .subtitle {
-  margin: 0.25rem 0 0;
+  width: fit-content;
+  margin: 0.35rem 0 0;
 }
 
 .balance {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 1rem 1.25rem;
-  background: #fff;
-  border: 1px solid #e3e3e8;
+  gap: 0.35rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--sportbet-superficie);
+  color: var(--sportbet-texto);
+  border: 1px solid var(--sportbet-borde);
+  border-top: 3px solid var(--sportbet-dorado);
   border-radius: 12px;
+  box-shadow: 0 4px 14px var(--sportbet-borde);
 }
 
 .balance-label {
+  background: var(--sportbet-superficie);
+  color: var(--sportbet-texto-secundario);
   font-size: 0.85rem;
-  color: #5b5b66;
+  font-weight: 600;
 }
 
 .balance-value {
-  font-size: 2rem;
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
 }
 
 .alert {
@@ -60,48 +68,85 @@ h2 {
   justify-content: space-between;
   gap: 1rem;
   margin: 1rem 0;
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-  background: #fef3f2;
-  color: #912018;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--sportbet-error-texto);
+  border-radius: 10px;
+  background: var(--sportbet-error-fondo);
+  color: var(--sportbet-error-texto);
 }
 
-// La tabla se desplaza dentro de su contenedor, nunca la página entera.
 .table-wrap {
   position: relative;
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #e3e3e8;
+  background: var(--sportbet-superficie);
+  color: var(--sportbet-texto);
+  border: 1px solid var(--sportbet-borde);
   border-radius: 12px;
+  box-shadow: 0 3px 12px var(--sportbet-borde);
 
-  &[aria-busy='true'] {
-    opacity: 0.6;
+  &[aria-busy='true']::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    width: 35%;
+    height: 3px;
+    border-radius: 999px;
+    background: var(--sportbet-azul);
+    content: '';
+    animation: loading-progress 1.4s ease-in-out infinite;
   }
 }
 
 table {
   width: 100%;
+  min-width: 620px;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
 th,
 td {
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   text-align: left;
   white-space: nowrap;
-  border-bottom: 1px solid #ededf1;
+  border-bottom: 1px solid var(--sportbet-borde);
 }
 
 th {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #5b5b66;
-  background: #f7f7f9;
+  background: var(--sportbet-superficie-elevada);
+  color: var(--sportbet-texto-secundario);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
+td {
+  background: var(--sportbet-superficie);
+  color: var(--sportbet-texto);
 }
 
 tbody tr:last-child td {
   border-bottom: 0;
+}
+
+tbody tr:hover td {
+  background: var(--sportbet-superficie-elevada);
+  color: var(--sportbet-texto);
+}
+
+tbody tr:hover td.plus {
+  background: var(--sportbet-exito-fondo);
+  color: var(--sportbet-exito-texto);
+}
+
+tbody tr:hover td.minus {
+  background: var(--sportbet-error-fondo);
+  color: var(--sportbet-error-texto);
+}
+
+tbody td.muted {
+  @include theme.secondary-surface-pair;
 }
 
 .num {
@@ -110,36 +155,50 @@ tbody tr:last-child td {
 }
 
 .plus {
-  color: #067647;
+  background: var(--sportbet-exito-fondo);
+  color: var(--sportbet-exito-texto);
+  font-weight: 700;
 }
 
 .minus {
-  color: #b42318;
+  background: var(--sportbet-error-fondo);
+  color: var(--sportbet-error-texto);
+  font-weight: 700;
 }
 
 button {
+  min-height: 2.4rem;
   padding: 0.4rem 0.75rem;
   font: inherit;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 650;
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--sportbet-borde);
   cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
 
   &.secondary {
-    background: #fff;
-    border-color: #c9c9d1;
-    color: #1b1b1f;
+    background: var(--sportbet-superficie);
+    color: var(--sportbet-texto);
+
+    &:hover:not(:disabled) {
+      background: var(--sportbet-superficie-elevada);
+      color: var(--sportbet-texto);
+      border-color: var(--sportbet-azul);
+    }
   }
 
   &:disabled {
-    opacity: 0.5;
+    background: var(--sportbet-superficie-elevada);
+    color: var(--sportbet-texto-deshabilitado);
+    border-color: var(--sportbet-borde);
     cursor: not-allowed;
   }
 
   &:focus-visible {
-    outline: 2px solid #174f15;
-    outline-offset: 1px;
+    @include theme.focus-ring;
   }
 }
 
@@ -149,6 +208,14 @@ button {
   justify-content: center;
   gap: 1rem;
   margin-top: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: var(--sportbet-superficie-elevada);
+  color: var(--sportbet-texto);
+
+  > span {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 .visually-hidden {
@@ -158,4 +225,43 @@ button {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+@keyframes loading-progress {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(180%);
+  }
+}
+
+@media (max-width: 560px) {
+  .head {
+    align-items: center;
+  }
+
+  .pager {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .balance {
+    padding: 0.9rem 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .table-wrap[aria-busy='true']::before {
+    transition: none;
+    animation: none;
+  }
 }
