@@ -12,13 +12,14 @@ import { BetSlipComponent, BetSlipStore, formatOdd } from '../../betting/public-
 import { marketLockReason, marketTitle, scoreText, statusLabel } from '../events-format';
 import { EventsService } from '../events.service';
 import { LiveScoresStore } from '../live-scores.store';
+import { TeamCrest } from '../team-crest';
 
 // Las fechas del detalle se muestran en español (día y mes con nombre).
 registerLocaleData(localeEs);
 
 @Component({
   selector: 'app-event-detail-page',
-  imports: [DatePipe, RouterLink, BetSlipComponent],
+  imports: [DatePipe, RouterLink, BetSlipComponent, TeamCrest],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './event-detail.page.html',
   styleUrl: './event-detail.page.scss',

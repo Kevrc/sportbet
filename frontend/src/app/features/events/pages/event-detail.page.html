@@ -23,7 +23,7 @@
       <header class="hero">
         <p class="league">{{ e.league.name }} · {{ e.league.country }}</p>
         <div class="match">
-          <span class="team">{{ e.home.name }}</span>
+          <span class="team"><app-team-crest [team]="e.home" size="lg" />{{ e.home.name }}</span>
           <span class="center">
             @if (score(); as s) {
               <strong class="score">{{ s }}</strong>
@@ -31,7 +31,7 @@
               <strong class="vs">vs</strong>
             }
           </span>
-          <span class="team">{{ e.away.name }}</span>
+          <span class="team"><app-team-crest [team]="e.away" size="lg" />{{ e.away.name }}</span>
         </div>
         <p class="meta">
           {{ e.startAt | date: "EEEE d 'de' MMMM, HH:mm" : undefined : 'es' }} ·

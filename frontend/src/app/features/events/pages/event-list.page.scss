@@ -157,7 +157,14 @@ h1 {
 .teams {
   display: flex;
   flex-direction: column;
+  gap: 0.2rem;
   font-weight: 600;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .score {

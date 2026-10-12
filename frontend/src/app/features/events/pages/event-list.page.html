@@ -80,8 +80,8 @@
             <a class="event" [routerLink]="['/events', e.id]">
               <span class="when">{{ e.startAt | date: 'dd/MM HH:mm' }}</span>
               <span class="teams">
-                <span>{{ e.home.name }}</span>
-                <span>{{ e.away.name }}</span>
+                <span class="team-row"><app-team-crest [team]="e.home" />{{ e.home.name }}</span>
+                <span class="team-row"><app-team-crest [team]="e.away" />{{ e.away.name }}</span>
               </span>
               <span class="score">{{ score(e) ?? '' }}</span>
               <span
