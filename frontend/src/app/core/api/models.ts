@@ -74,6 +74,7 @@ export interface AdminStats {
 export interface AuditEntry {
   id: number;
   actorId: string | null;
+  actorName?: string | null;
   action: string;
   entity: string;
   entityId: string | null;

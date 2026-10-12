@@ -560,7 +560,8 @@ components:
       properties:
         id: { type: integer }
         actorId: { type: [string, 'null'], format: uuid }
-        action: { type: string }
+        actorName: { type: [string, 'null'], description: Nombre visible del usuario que originó la acción }
+        action: { type: string, examples: [BET_PLACED, BET_SETTLED] }
         entity: { type: string }
         entityId: { type: [string, 'null'] }
         data: { type: object }
