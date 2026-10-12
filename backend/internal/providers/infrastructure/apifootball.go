@@ -163,6 +163,15 @@ func hasAPIErrors(raw json.RawMessage) bool {
 	return true
 }
 
+// safeLogoURL solo acepta URLs https: el frontend las usa como src de <img>.
+func safeLogoURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return ""
+	}
+	return u.String()
+}
+
 func convertFixture(item apiFixture, useFulltime bool) (contracts.ProviderFixture, error) {
 	if item.Fixture.ID <= 0 || item.League.ID <= 0 ||
 		item.Teams.Home.ID <= 0 || item.Teams.Away.ID <= 0 ||
@@ -174,8 +183,8 @@ func convertFixture(item apiFixture, useFulltime bool) (contracts.ProviderFixtur
 		League: contracts.ProviderLeague{
 			ExternalID: strconv.Itoa(item.League.ID), Name: item.League.Name, Country: item.League.Country,
 		},
-		Home:    contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Home.ID), Name: item.Teams.Home.Name},
-		Away:    contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Away.ID), Name: item.Teams.Away.Name},
+		Home:    contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Home.ID), Name: item.Teams.Home.Name, LogoURL: safeLogoURL(item.Teams.Home.Logo)},
+		Away:    contracts.ProviderTeam{ExternalID: strconv.Itoa(item.Teams.Away.ID), Name: item.Teams.Away.Name, LogoURL: safeLogoURL(item.Teams.Away.Logo)},
 		StartAt: item.Fixture.Date, Status: matchStatus(item.Fixture.Status.Short),
 	}
 	if useFulltime {
