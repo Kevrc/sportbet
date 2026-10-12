@@ -83,6 +83,7 @@
                 class="selection"
                 [class.won]="s.result === 'WON'"
                 [class.lost]="s.result === 'LOST'"
+                [class.void]="s.result === 'VOID'"
                 [class.selected]="slip.selectedIds().has(s.id)"
                 [attr.aria-pressed]="slip.selectedIds().has(s.id)"
                 [disabled]="!!reason"
@@ -91,6 +92,13 @@
               >
                 <span class="label">{{ s.label }}</span>
                 <span class="odd">{{ odd(s.oddX100) }}</span>
+                @if (s.result === 'WON') {
+                  <span><span aria-hidden="true">✓</span> Ganada</span>
+                } @else if (s.result === 'LOST') {
+                  <span><span aria-hidden="true">×</span> Perdida</span>
+                } @else if (s.result === 'VOID') {
+                  <span><span aria-hidden="true">—</span> Anulada</span>
+                }
               </button>
             }
           </div>

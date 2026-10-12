@@ -1,0 +1,56 @@
+@mixin tokens {
+  --sportbet-fondo: #F3F5F9;
+  --sportbet-superficie: #FFFFFF;
+  --sportbet-superficie-elevada: #E8ECF4;
+  --sportbet-borde: #D3D9E5;
+  --sportbet-rojo: #C8102E;
+  --sportbet-rojo-hover: #A60D26;
+  --sportbet-dorado: #E0A526;
+  --sportbet-azul: #2F6FDB;
+  --sportbet-azul-texto: #1D4FB8;
+  --sportbet-azul-fondo: #E3EDFC;
+  --sportbet-texto-sobre-acento: #FFFFFF;
+  --sportbet-texto: #1B1F2A;
+  --sportbet-texto-secundario: #5B6475;
+  --sportbet-texto-deshabilitado: #6B7385;
+  --sportbet-exito-fondo: #E3F6EC;
+  --sportbet-exito-texto: #146C3A;
+  --sportbet-seleccion-hover: #0F5A2F;
+  --sportbet-seleccion-foco: #DDF3E6;
+  --sportbet-seleccion-activo: #0B4824;
+  --sportbet-error-fondo: #FDE8EA;
+  --sportbet-error-texto: #B3261E;
+  --sportbet-pendiente-fondo: #FFF3D6;
+  --sportbet-pendiente-texto: #6B4A00;
+}
+
+@mixin pair($background, $foreground) {
+  background: $background;
+  color: $foreground;
+}
+
+@mixin page-pair {
+  @include pair(var(--sportbet-fondo), var(--sportbet-texto));
+  color-scheme: light;
+}
+
+@mixin surface-pair {
+  @include pair(var(--sportbet-superficie), var(--sportbet-texto));
+}
+
+@mixin secondary-surface-pair {
+  @include pair(transparent, var(--sportbet-texto-secundario));
+}
+
+@mixin elevated-pair {
+  @include pair(var(--sportbet-superficie-elevada), var(--sportbet-texto));
+}
+
+@mixin secondary-elevated-pair {
+  @include pair(transparent, var(--sportbet-texto-secundario));
+}
+
+@mixin focus-ring {
+  outline: 2px solid var(--sportbet-azul);
+  outline-offset: 2px;
+}
