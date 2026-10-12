@@ -13,11 +13,9 @@
 .topbar-content {
   display: flex;
   width: 100%;
-  max-width: 1148px;
   box-sizing: border-box;
   align-items: center;
   justify-content: space-between;
-  margin: 0 auto;
   padding: 0 24px;
 }
 .brand {
@@ -73,6 +71,9 @@ nav a.login {
   transition:
     background-color 180ms ease,
     color 180ms ease;
+}
+nav button {
+  margin-left: 8px;
 }
 nav button:hover,
 nav a.login:hover {
