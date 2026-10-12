@@ -616,6 +616,21 @@ components:
           required: [markets]
           properties:
             markets: { type: array, items: { $ref: '#/components/schemas/Market' } }
+            timeline:
+              type: array
+              description: Sucesos del partido en orden (se omite si todavía no hay).
+              items: { $ref: '#/components/schemas/MatchEvent' }
+    MatchEvent:
+      type: object
+      required: [minute, side, type, detail]
+      properties:
+        minute: { type: integer, minimum: 0 }
+        extra: { type: [integer, 'null'], description: 'Descuento: 90+3 es minute 90, extra 3' }
+        side: { type: string, enum: [HOME, AWAY] }
+        type: { type: string, enum: [GOAL, CARD, SUBST, VAR] }
+        detail: { type: string, examples: ['Normal Goal', 'Penalty', 'Yellow Card', 'Substitution 1'] }
+        player: { type: [string, 'null'] }
+        assist: { type: [string, 'null'], description: 'Asistencia; en un cambio, el otro jugador' }
     Market:
       type: object
       required: [id, eventId, code, status, selections]

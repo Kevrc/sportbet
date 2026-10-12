@@ -127,8 +127,22 @@ export interface Market {
   status: MarketStatus;
   selections: Selection[];
 }
+export interface MatchEvent {
+  minute: number;
+  /** Descuento: 90+3 es minute 90, extra 3. */
+  extra?: number | null;
+  side: 'HOME' | 'AWAY';
+  type: 'GOAL' | 'CARD' | 'SUBST' | 'VAR';
+  /** Texto del proveedor: "Normal Goal", "Penalty", "Yellow Card"… */
+  detail: string;
+  player?: string | null;
+  /** Asistencia; en un cambio, el otro jugador. */
+  assist?: string | null;
+}
 export interface EventDetail extends SportEvent {
   markets: Market[];
+  /** Sucesos del partido; ausente si todavía no hay. */
+  timeline?: MatchEvent[];
 }
 
 // ---- betting ----
