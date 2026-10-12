@@ -85,3 +85,13 @@ func TestListEventsRejectsInvalidDate(t *testing.T) {
 		t.Fatalf("status = %d, quiere 400; body = %s", response.Code, response.Body.String())
 	}
 }
+
+func (r *repositoryStub) ListStandingsLeagues(context.Context, string) ([]application.StandingsLeague, error) {
+	return nil, nil
+}
+func (r *repositoryStub) UpdateTeamStrengths(context.Context, string, map[string]float64) (int, error) {
+	return 0, nil
+}
+func (r *repositoryStub) HasFeaturedInPlay(context.Context, string, time.Time) (bool, error) {
+	return false, nil
+}

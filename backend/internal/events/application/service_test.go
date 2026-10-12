@@ -59,3 +59,13 @@ func TestListEventsRejectsUnknownStatus(t *testing.T) {
 		t.Fatal("se aceptó un estado desconocido")
 	}
 }
+
+func (r *repositoryStub) ListStandingsLeagues(context.Context, string) ([]StandingsLeague, error) {
+	return nil, nil
+}
+func (r *repositoryStub) UpdateTeamStrengths(context.Context, string, map[string]float64) (int, error) {
+	return 0, nil
+}
+func (r *repositoryStub) HasFeaturedInPlay(context.Context, string, time.Time) (bool, error) {
+	return false, nil
+}

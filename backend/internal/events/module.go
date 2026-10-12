@@ -20,6 +20,7 @@ import (
 	"sportbet/internal/events/infrastructure"
 	"sportbet/internal/events/presentation"
 	"sportbet/internal/shared/app"
+	"sportbet/internal/shared/contracts"
 )
 
 // Register registra las rutas, suscripciones al bus y workers del módulo.
@@ -56,8 +57,29 @@ func Register(r chi.Router, d app.Deps) {
 					d.Log.ErrorContext(ctx, "falló la importación de fixtures", "date", date.Format("2006-01-02"), "err", err)
 				}
 			}
+			// La fuerza de los equipos sale de la tabla de posiciones: una
+			// llamada por liga, con la misma frecuencia que el calendario.
+			if standings, ok := d.Fixtures.(contracts.StandingsProvider); ok && d.Fixtures.Name() != "replay" {
+				calls, updated, err := service.SyncStrengths(ctx, d.Fixtures.Name(), standings, d.Config.FeaturedLeagueIDs)
+				if err != nil {
+					d.Log.ErrorContext(ctx, "falló la actualización de la fuerza de los equipos", "calls", calls, "err", err)
+				}
+				if updated > 0 {
+					d.Log.InfoContext(ctx, "fuerza de equipos actualizada desde la tabla", "calls", calls, "teams", updated)
+				}
+			}
 		}
 		syncLive := func() {
+			if d.Live.Name() != "replay" {
+				inPlay, err := service.HasFeaturedInPlay(ctx, d.Live.Name(), d.Clock().UTC())
+				if err != nil {
+					d.Log.ErrorContext(ctx, "no se pudo revisar si hay partidos destacados en juego", "err", err)
+					return
+				}
+				if !inPlay {
+					return // cero llamadas sin partidos destacados en juego
+				}
+			}
 			scores, err := d.Live.LiveScores(ctx)
 			if err != nil {
 				d.Log.ErrorContext(ctx, "falló la consulta de marcadores en vivo", "err", err)

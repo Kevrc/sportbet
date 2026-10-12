@@ -31,7 +31,7 @@ func (r *Repository) ListEventMarkets(ctx context.Context, eventID string) ([]ap
 		FROM markets m
 		LEFT JOIN selections s ON s.market_id = m.id
 		WHERE m.event_id = $1::uuid
-		ORDER BY m.code, s.id`, eventID)
+		ORDER BY m.code, array_position(ARRAY['HOME','DRAW','AWAY','OVER','UNDER','YES','NO'], s.code)`, eventID)
 	if err != nil {
 		return nil, fmt.Errorf("markets: listar mercados: %w", err)
 	}
@@ -330,3 +330,63 @@ func value[T any](item *T) T {
 }
 
 var _ application.Repository = (*Repository)(nil)
+
+// RepriceOpenMarkets actualiza odd_x100 de las selecciones de mercados OPEN
+// de eventos programados que todavía aceptan apuestas, si la cuota calculada
+// con la fuerza actual de los equipos es distinta.
+func (r *Repository) RepriceOpenMarkets(ctx context.Context, now time.Time, margin int) (int, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT e.id::text, home.strength, away.strength
+		FROM events e
+		JOIN teams home ON home.id = e.home_team_id
+		JOIN teams away ON away.id = e.away_team_id
+		WHERE e.status = 'SCHEDULED' AND e.start_at > $1
+		  AND EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.id AND m.status = 'OPEN')`,
+		now.Add(contracts.MarketCloseLead))
+	if err != nil {
+		return 0, fmt.Errorf("markets: buscar mercados abiertos: %w", err)
+	}
+	type pending struct {
+		eventID    string
+		home, away float64
+	}
+	events, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (pending, error) {
+		var p pending
+		err := row.Scan(&p.eventID, &p.home, &p.away)
+		return p, err
+	})
+	if err != nil {
+		return 0, fmt.Errorf("markets: leer mercados abiertos: %w", err)
+	}
+	changed := 0
+	for _, ev := range events {
+		odds, err := domain.CalculateOdds(ev.home, ev.away, margin)
+		if err != nil {
+			return changed, fmt.Errorf("markets: calcular cuotas: %w", err)
+		}
+		updates := []struct {
+			market, selection string
+			odd               money.Odds
+		}{
+			{contracts.MarketMatchResult, "HOME", odds.MatchResult[0]},
+			{contracts.MarketMatchResult, "DRAW", odds.MatchResult[1]},
+			{contracts.MarketMatchResult, "AWAY", odds.MatchResult[2]},
+			{contracts.MarketTotalGoals, "OVER", odds.TotalGoals[0]},
+			{contracts.MarketTotalGoals, "UNDER", odds.TotalGoals[1]},
+			{contracts.MarketBTTS, "YES", odds.BothScore[0]},
+			{contracts.MarketBTTS, "NO", odds.BothScore[1]},
+		}
+		for _, u := range updates {
+			tag, err := r.pool.Exec(ctx, `
+				UPDATE selections s SET odd_x100 = $4
+				FROM markets m
+				WHERE s.market_id = m.id AND m.event_id = $1::uuid AND m.code = $2 AND m.status = 'OPEN'
+				  AND s.code = $3 AND s.odd_x100 <> $4`, ev.eventID, u.market, u.selection, int64(u.odd))
+			if err != nil {
+				return changed, fmt.Errorf("markets: actualizar cuota: %w", err)
+			}
+			changed += int(tag.RowsAffected())
+		}
+	}
+	return changed, nil
+}

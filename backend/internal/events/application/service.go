@@ -16,6 +16,8 @@ type League struct {
 	Name     string
 	Country  string
 	Featured bool
+	LogoURL  *string
+	FlagURL  *string
 }
 
 type Team struct {
@@ -36,6 +38,9 @@ type Event struct {
 	Minute        *int
 	Featured      bool
 	LiveUpdatedAt *time.Time
+	Round         *string
+	VenueName     *string
+	VenueCity     *string
 	Markets       []Market
 }
 
@@ -79,6 +84,9 @@ type Repository interface {
 	ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture, bool) ([]Change, error)
 	ListResultCandidates(context.Context, string, time.Time) ([]ResultCandidate, error)
 	ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]Change, error)
+	ListStandingsLeagues(context.Context, string) ([]StandingsLeague, error)
+	UpdateTeamStrengths(context.Context, string, map[string]float64) (int, error)
+	HasFeaturedInPlay(context.Context, string, time.Time) (bool, error)
 }
 
 type Service struct {
@@ -183,6 +191,13 @@ func (s *Service) ListResultCandidates(ctx context.Context, provider string, cut
 		return nil, errs.New(errs.ErrValidation, "INVALID_PROVIDER", "el proveedor es obligatorio")
 	}
 	return s.repository.ListResultCandidates(ctx, provider, cutoff)
+}
+
+// HasFeaturedInPlay indica si vale la pena consultar el marcador en vivo:
+// hay algún partido destacado en juego o que empieza en los próximos minutos.
+// Regla del plan: cero llamadas cuando no hay partidos destacados en juego.
+func (s *Service) HasFeaturedInPlay(ctx context.Context, provider string, now time.Time) (bool, error) {
+	return s.repository.HasFeaturedInPlay(ctx, provider, now)
 }
 
 func (s *Service) ApplyLiveScores(ctx context.Context, provider string, now time.Time, scores []contracts.LiveScore) error {

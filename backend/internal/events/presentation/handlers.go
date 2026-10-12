@@ -36,10 +36,17 @@ func Register(r chi.Router, service *application.Service, bus eventbus.Bus, log 
 }
 
 type leagueDTO struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Country  string `json:"country"`
-	Featured bool   `json:"featured"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Country  string  `json:"country"`
+	Featured bool    `json:"featured"`
+	LogoURL  *string `json:"logoUrl"`
+	FlagURL  *string `json:"flagUrl"`
+}
+
+type venueDTO struct {
+	Name string  `json:"name"`
+	City *string `json:"city"`
 }
 
 type teamDTO struct {
@@ -60,6 +67,8 @@ type eventDTO struct {
 	Minute        *int        `json:"minute"`
 	Featured      bool        `json:"featured"`
 	LiveUpdatedAt *time.Time  `json:"liveUpdatedAt"`
+	Round         *string     `json:"round"`
+	Venue         *venueDTO   `json:"venue"`
 	Markets       []marketDTO `json:"markets,omitempty"`
 }
 
@@ -237,7 +246,8 @@ func eventFilter(r *http.Request) (application.Filter, error) {
 }
 
 func toLeague(league application.League) leagueDTO {
-	return leagueDTO{ID: league.ID, Name: league.Name, Country: league.Country, Featured: league.Featured}
+	return leagueDTO{ID: league.ID, Name: league.Name, Country: league.Country, Featured: league.Featured,
+		LogoURL: league.LogoURL, FlagURL: league.FlagURL}
 }
 
 func toEvent(event application.Event, detail bool) eventDTO {
@@ -247,7 +257,10 @@ func toEvent(event application.Event, detail bool) eventDTO {
 		Away:    teamDTO{ID: event.Away.ID, Name: event.Away.Name, LogoURL: event.Away.LogoURL},
 		StartAt: event.StartAt, Status: string(event.Status),
 		HomeScore: event.HomeScore, AwayScore: event.AwayScore, Minute: event.Minute,
-		Featured: event.Featured, LiveUpdatedAt: event.LiveUpdatedAt,
+		Featured: event.Featured, LiveUpdatedAt: event.LiveUpdatedAt, Round: event.Round,
+	}
+	if event.VenueName != nil {
+		out.Venue = &venueDTO{Name: *event.VenueName, City: event.VenueCity}
 	}
 	if detail {
 		out.Markets = make([]marketDTO, 0, len(event.Markets))

@@ -21,6 +21,9 @@ func (r *repositoryStub) EnsureMarkets(context.Context, string, int) error { ret
 func (r *repositoryStub) EnsureUpcomingMarkets(context.Context, time.Time, int) error {
 	return nil
 }
+func (r *repositoryStub) RepriceOpenMarkets(context.Context, time.Time, int) (int, error) {
+	return 0, nil
+}
 func (r *repositoryStub) CloseMarketsForEvent(context.Context, string) error {
 	r.closed = true
 	return nil

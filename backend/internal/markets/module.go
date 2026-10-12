@@ -51,6 +51,11 @@ func Register(r chi.Router, d app.Deps) {
 			if err := service.EnsureUpcomingMarkets(ctx, now); err != nil {
 				d.Log.ErrorContext(ctx, "no se pudieron crear mercados para eventos próximos", "err", err)
 			}
+			if n, err := service.RepriceOpenMarkets(ctx, now); err != nil {
+				d.Log.ErrorContext(ctx, "no se pudieron recalcular las cuotas abiertas", "err", err)
+			} else if n > 0 {
+				d.Log.InfoContext(ctx, "cuotas recalculadas con la fuerza de los equipos", "selections", n)
+			}
 			if err := service.CloseMarketsPastCutoff(ctx, now.Add(contracts.MarketCloseLead)); err != nil {
 				d.Log.ErrorContext(ctx, "no se pudieron cerrar mercados por horario", "err", err)
 			}

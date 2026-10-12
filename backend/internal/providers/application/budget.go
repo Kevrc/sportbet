@@ -98,6 +98,20 @@ func (p *BudgetedFixtures) FixtureResult(ctx context.Context, externalID string)
 	return p.provider.FixtureResult(ctx, externalID)
 }
 
+// Standings consume del mismo presupuesto que los fixtures.
+func (p *BudgetedFixtures) Standings(ctx context.Context, leagueExternalID string, season int) ([]contracts.TeamStanding, error) {
+	standings, ok := p.provider.(contracts.StandingsProvider)
+	if !ok {
+		return nil, errs.New(errs.ErrProviderUnavailable, "STANDINGS_UNSUPPORTED", "el proveedor actual no entrega tablas de posiciones")
+	}
+	if name := p.provider.Name(); name != "replay" && name != "unavailable" {
+		if err := p.budget.Allow(ctx, name, domain.FixtureRequest); err != nil {
+			return nil, err
+		}
+	}
+	return standings.Standings(ctx, leagueExternalID, season)
+}
+
 type BudgetedLiveScores struct {
 	provider contracts.LiveScoreProvider
 	budget   *Budget
@@ -120,5 +134,6 @@ func (p *BudgetedLiveScores) LiveScores(ctx context.Context) ([]contracts.LiveSc
 
 var (
 	_ contracts.FixtureProvider   = (*BudgetedFixtures)(nil)
+	_ contracts.StandingsProvider = (*BudgetedFixtures)(nil)
 	_ contracts.LiveScoreProvider = (*BudgetedLiveScores)(nil)
 )
