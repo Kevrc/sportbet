@@ -38,7 +38,7 @@
   padding: 0 0.4rem;
   place-items: center;
   border-radius: 999px;
-  background: var(--sportbet-rojo);
+  background: var(--sportbet-exito-texto);
   color: var(--sportbet-texto-sobre-acento);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -128,7 +128,13 @@
       }
 
       &:focus-visible {
-        @include theme.focus-ring;
+        outline: 2px solid var(--sportbet-azul);
+        outline-offset: 2px;
+
+        &.primary {
+          outline-color: var(--sportbet-seleccion-foco);
+          outline-width: 3px;
+        }
       }
     }
   }
@@ -356,8 +362,8 @@ button {
     padding: 0.65rem 0.8rem;
     font-weight: 750;
     color: var(--sportbet-texto-sobre-acento);
-    background: var(--sportbet-rojo);
-    border: 1px solid var(--sportbet-rojo);
+    background: var(--sportbet-exito-texto);
+    border: 1px solid var(--sportbet-exito-texto);
     border-radius: 8px;
     cursor: pointer;
     transition:
@@ -365,13 +371,15 @@ button {
       background-color 180ms ease;
 
     &:hover:not(:disabled) {
-      background: var(--sportbet-rojo-hover);
+      background: var(--sportbet-seleccion-hover);
       color: var(--sportbet-texto-sobre-acento);
-      border-color: var(--sportbet-rojo-hover);
+      border-color: var(--sportbet-seleccion-hover);
       transform: translateY(-1px);
     }
 
     &:active:not(:disabled) {
+      background: var(--sportbet-seleccion-activo);
+      border-color: var(--sportbet-seleccion-activo);
       transform: scale(0.98);
     }
 
