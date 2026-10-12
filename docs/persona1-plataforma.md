@@ -129,7 +129,8 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 | `GET /me` | ✅ Hecho y probado | [`users/presentation/handlers.go`](../backend/internal/users/presentation/handlers.go) |
 | `GET /admin/users` (paginado) y `PATCH /admin/users/{id}` (rol y estado). Un admin no puede quitarse el rol ni bloquearse (409 `CANNOT_MODIFY_SELF`) | ✅ Hecho y probado | [`users/application/service.go`](../backend/internal/users/application/service.go) |
 | Admin inicial al arrancar (`ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`), idempotente y sin promover usuarios existentes | ✅ Hecho y probado | [`auth/application/service.go`](../backend/internal/auth/application/service.go) |
-| `GET /admin/stats` y `GET /admin/audit` (consumen `BetPlaced` y `BetSettled`) | ⏳ Pendiente; las estadísticas son lo segundo en el orden de recorte | — |
+| `GET /admin/stats` y `GET /admin/audit` | ✂️ Recortado (2º en el orden de recorte del plan): nadie publica `BetPlaced` ni `BetSettled` en el bus | — |
+| Prueba de carga (k6) y análisis PASA | ✅ Hecho y medido | [`loadtest/`](../loadtest/README.md) |
 
 ### Riesgos y mitigaciones
 
@@ -144,10 +145,135 @@ En el frontend, `authInterceptor` agrega el `Bearer`. Ante un 401 llama una sola
 | Sistema sin administradores | Un admin no puede quitarse su rol ni bloquearse a sí mismo |
 | Fuga de la base de datos | Solo se guardan hashes: bcrypt para contraseñas y sha256 para los refresh tokens |
 
-## Atributos de calidad (Acme)
+## Descripción de la arquitectura en Acme
 
-_Pendiente. Se completa cuando el login esté integrado y los requisitos no funcionales tengan números (pendiente del plan: carga, p95 y pasos para apostar)._
+[Acme](https://www.cs.cmu.edu/~acme/) es un lenguaje de descripción de arquitecturas (ADL) del SEI/CMU. Describe el sistema como **componentes** con **puertos**, **conectores** con **roles** y **attachments** que los unen. Las propiedades llevan los atributos que importan para el análisis (latencia, presupuesto, atomicidad).
 
-## PASA: escenario de prueba de carga
+```acme
+Family SportBetFam = {
+  Port Type HttpPort, SqlPort, PublishPort, SubscribePort, SsePort;
+  Role Type Caller, Callee, Publisher, Subscriber;
+  Component Type Module = { Property owner : string; Property layers : string = "domain, application, infrastructure, presentation"; };
+  Connector Type RestCall = { Role caller : Caller; Role callee : Callee; };
+  Connector Type SqlTx = { Role client : Caller; Role db : Callee; Property atomic : boolean = true; };
+  Connector Type EventBus = { Role publisher : Publisher; Role subscriber : Subscriber; Property delivery : string = "en memoria, al menos una vez no garantizado"; };
+  Connector Type Sse = { Role server : Publisher; Role client : Subscriber; };
+}
 
-_Pendiente. Depende de fijar los números del punto anterior. Si el sábado hay atraso, el plan permite documentar el escenario sin medirlo._
+System SportBet : SportBetFam = {
+  // ---- Componentes ----
+  Component Angular = { Port api : HttpPort; Port live : SsePort; Property spa : boolean = true; };
+
+  Component Auth : Module = { Port rest : HttpPort; Port db : SqlPort; Property owner = "Persona 1";
+    Property tokens : string = "JWT HS256 15 min + refresh opaco rotado"; };
+  Component Users : Module = { Port rest : HttpPort; Port db : SqlPort; Property owner = "Persona 1"; };
+  Component Events : Module = { Port rest : HttpPort; Port db : SqlPort; Port pub : PublishPort; Port sse : SsePort;
+    Property owner = "Persona 2"; };
+  Component Markets : Module = { Port rest : HttpPort; Port db : SqlPort; Port sub : SubscribePort; Property owner = "Persona 2"; };
+  Component SyncWorker : Module = { Port provider : HttpPort; Port db : SqlPort; Port pub : PublishPort;
+    Property owner = "Persona 2"; Property budget : string = "100 llamadas/día, 10/min"; };
+  Component Betting : Module = { Port rest : HttpPort; Port db : SqlPort; Property owner = "Persona 3"; };
+  Component Wallet : Module = { Port rest : HttpPort; Port db : SqlPort; Property owner = "Persona 3";
+    Property debit : string = "UPDATE ... WHERE balance_cents >= monto"; };
+  Component Settlement : Module = { Port db : SqlPort; Port sub : SubscribePort; Property owner = "Persona 3"; };
+
+  Component PostgreSQL = { Port sql : SqlPort; };
+  Component APIFootball = { Port rest : HttpPort; Property external : boolean = true; };
+
+  // ---- Conectores ----
+  Connector RestApi : RestCall = { Property base : string = "/api/v1"; Property auth : string = "Bearer JWT"; };
+  Connector LiveStream : Sse = { Property path : string = "/api/v1/events/stream"; };
+  Connector Bus : EventBus = { Property topics : string = "match.updated, match.started, match.finished"; };
+  Connector ProviderHttp : RestCall = { Property adapter : string = "FixtureProvider, LiveScoreProvider, StandingsProvider"; };
+  Connector Db : SqlTx;
+  // Los módulos no se llaman entre sí: usan las interfaces de shared/contracts
+  // (MarketReader, ResultReader, WalletService) que main.go inyecta.
+  Connector Contracts : RestCall = { Property kind : string = "llamada en proceso por interfaz"; };
+
+  // ---- Attachments ----
+  Attachments {
+    Angular.api to RestApi.caller;
+    Auth.rest to RestApi.callee;  Users.rest to RestApi.callee;  Events.rest to RestApi.callee;
+    Markets.rest to RestApi.callee;  Betting.rest to RestApi.callee;  Wallet.rest to RestApi.callee;
+
+    Events.sse to LiveStream.server;  Angular.live to LiveStream.client;
+
+    SyncWorker.provider to ProviderHttp.caller;  APIFootball.rest to ProviderHttp.callee;
+    SyncWorker.pub to Bus.publisher;  Events.pub to Bus.publisher;
+    Markets.sub to Bus.subscriber;  Settlement.sub to Bus.subscriber;
+
+    Betting.rest to Contracts.caller;  Wallet.rest to Contracts.callee;  // PlaceBet → WalletService.Debit
+    Auth.rest to Contracts.caller;                                       // Register → WalletService.CreateWallet
+
+    Auth.db to Db.client;  Users.db to Db.client;  Events.db to Db.client;  Markets.db to Db.client;
+    SyncWorker.db to Db.client;  Betting.db to Db.client;  Wallet.db to Db.client;  Settlement.db to Db.client;
+    PostgreSQL.sql to Db.db;
+  }
+}
+```
+
+**Restricciones de estilo** (lo que el sistema garantiza y CI verifica):
+
+| Restricción | Cómo se cumple |
+|---|---|
+| Un módulo no importa otro módulo | `scripts/check-imports.sh` falla el CI si `internal/X` importa `internal/Y` |
+| `domain` no depende de infraestructura | El mismo script prohíbe pgx, chi y net/http en `*/domain` |
+| Solo `SyncWorker` usa `ProviderHttp` | Es el único que recibe los proveedores; los usuarios leen de la base |
+| Débito y apuesta en una sola transacción | `WalletService` recibe el `db.Querier` del llamador (`SqlTx.atomic = true`) |
+
+## PASA: análisis de rendimiento
+
+PASA (*Performance Assessment of Software Architectures*, Williams y Smith) evalúa si una arquitectura cumple sus objetivos de rendimiento siguiendo estos pasos.
+
+### 1. Escenarios críticos y objetivos
+
+Son los requisitos no funcionales que el plan dejó pendientes ("carga, p95 y pasos para apostar"). Propuesta medible:
+
+| Escenario | Por qué es crítico | Objetivo |
+|---|---|---|
+| **E1 – Navegar** (lista de eventos + detalle) | Es lo que más hace un usuario | p95 < 300 ms con 50 usuarios simultáneos |
+| **E2 – Apostar** (`POST /bets`) | Transacción con débito atómico, idempotencia y validación de cuota | p95 < 500 ms con 50 usuarios simultáneos |
+| **E3 – Doble gasto** | Riesgo del plan: dos apuestas a la vez con saldo para una | Exactamente una aceptada; saldo nunca negativo |
+| **E4 – Marcador en vivo** | Depende de un proveedor externo con 100 llamadas al día | Dato con menos de 5 min; cero llamadas sin partidos destacados en juego |
+| Pasos para apostar | Usabilidad | 3: elegir partido → elegir cuota → confirmar monto |
+
+### 2. Decisiones de arquitectura que sostienen los objetivos
+
+- **Los usuarios nunca esperan al proveedor externo.** Solo el Sync Worker consulta API-Football. Los requests leen de PostgreSQL y el SSE empuja los cambios. Por eso E1 no depende de la latencia ni del límite del proveedor.
+- **Débito atómico en una sentencia** (`UPDATE … WHERE balance_cents >= monto`), dentro de la misma transacción que la apuesta. Evita el antipatrón "leer saldo y después debitar", que provoca doble gasto, sin bloqueos explícitos (E3).
+- **Cuotas calculadas en el servidor y congeladas al apostar.** Apostar no hace llamadas externas (E2).
+- **Presupuesto del proveedor como recurso compartido**, con un contador persistido. Hay una consulta en vivo por ciclo para todos los partidos, resultados agrupados por fecha y tablas de posiciones cada 12 h (E4).
+
+### 3. Medición
+
+k6 contra la API real con PostgreSQL 17, en una máquina (Apple M5, 10 núcleos, 24 GB), API y base en el mismo equipo. Los scripts y cómo correrlos están en [`loadtest/`](../loadtest/README.md).
+
+| Escenario | Carga | p95 | p99 | Errores | Resultado |
+|---|---|---|---|---|---|
+| E1 – Navegar y consultar | 50 usuarios, 1 min | **2.6 ms** | 5.9 ms | 0 % | ✅ (objetivo 300 ms) |
+| E2 – Apostar | 50 usuarios, 1 min | **8.0 ms** | 15.2 ms | 0 % | ✅ (objetivo 500 ms) |
+| Total | 50 usuarios, 1 min | — | — | 0 de 5 801 | 88 req/s |
+| E1 con 4× carga | 200 usuarios, 30 s | 2.7 ms | 25.5 ms | 0 % | ✅ |
+| E2 con 4× carga | 200 usuarios, 30 s | 14.9 ms | 35.4 ms | 0 % | ✅, 232 req/s en total |
+| E3 – Doble gasto | 20 apuestas simultáneas, saldo para 1 | — | — | — | ✅ 1 aceptada, 19 `INSUFFICIENT_FUNDS`, saldo final 1.00 |
+
+E4 se verificó con la API real: una consulta en vivo trae todos los partidos en juego, y el día de pruebas se usaron 58 de las 100 llamadas, contando varios reinicios de la API y llamadas manuales de verificación.
+
+### 4. Análisis
+
+- **Hay margen de sobra en E1 y E2.** Con 4 veces la carga objetivo, el p95 sigue dos órdenes de magnitud por debajo del objetivo. El cuello de botella esperado es PostgreSQL (conexiones del pool y bloqueos de fila en `wallets`), no la API.
+- **El p99 sube con 200 usuarios** (25–35 ms). Es la cola de espera del pool de conexiones; sigue muy por debajo de los objetivos.
+- **Limitaciones de la medición:**
+  - API y base comparten máquina, sin latencia de red real.
+  - La base es pequeña: 3 partidos y unos 250 usuarios.
+  - El registro (bcrypt) no está en el escenario, porque se hace una vez por usuario.
+  - En producción conviene repetir la prueba con la base en otro host.
+
+### 5. Alternativas si la carga creciera
+
+| Riesgo | Alternativa |
+|---|---|
+| Lecturas de eventos muy frecuentes | Caché en memoria de `GET /events` invalidada por `match.updated` del bus |
+| Pool de conexiones saturado | Ajustar `pgxpool` (`max_conns`) o poner PgBouncer delante |
+| Bus en memoria con varias instancias de la API | Reemplazar `eventbus.InMemory` por Postgres `LISTEN/NOTIFY` o Redis; el contrato `eventbus.Bus` no cambia |
+| Presupuesto del proveedor | Plan pago de API-Football, o un segundo proveedor (football-data.org) detrás de la misma interfaz |
