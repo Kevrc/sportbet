@@ -4,6 +4,7 @@
   @include theme.tokens;
   @include theme.page-pair;
   display: block;
+  min-height: 100vh;
   font-family: Inter, 'Segoe UI', sans-serif;
 }
 
@@ -50,7 +51,7 @@ h2 {
 }
 
 .balance-label {
-  background: var(--sportbet-superficie);
+  background: transparent;
   color: var(--sportbet-texto-secundario);
   font-size: 0.85rem;
   font-weight: 600;
@@ -122,6 +123,11 @@ th {
 }
 
 td {
+  background: transparent;
+  color: var(--sportbet-texto);
+}
+
+tbody tr {
   background: var(--sportbet-superficie);
   color: var(--sportbet-texto);
 }
@@ -130,19 +136,14 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
-tbody tr:hover td {
+tbody tr:hover {
   background: var(--sportbet-superficie-elevada);
   color: var(--sportbet-texto);
 }
 
-tbody tr:hover td.plus {
-  background: var(--sportbet-exito-fondo);
-  color: var(--sportbet-exito-texto);
-}
-
-tbody tr:hover td.minus {
-  background: var(--sportbet-error-fondo);
-  color: var(--sportbet-error-texto);
+tbody tr:hover td {
+  background: transparent;
+  color: var(--sportbet-texto);
 }
 
 tbody td.muted {
@@ -155,14 +156,14 @@ tbody td.muted {
 }
 
 .plus {
-  background: var(--sportbet-exito-fondo);
-  color: var(--sportbet-exito-texto);
+  background: transparent;
+  color: var(--sportbet-texto);
   font-weight: 700;
 }
 
 .minus {
-  background: var(--sportbet-error-fondo);
-  color: var(--sportbet-error-texto);
+  background: transparent;
+  color: var(--sportbet-texto);
   font-weight: 700;
 }
 
