@@ -10,6 +10,7 @@ import { Team } from '../../core/api/models';
   selector: 'app-team-crest',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.lg]': "size() === 'lg'", 'aria-hidden': 'true' },
+  styleUrl: './team-crest.scss',
   template: `
     @if (team().logoUrl && !failed()) {
       <img
@@ -23,39 +24,6 @@ import { Team } from '../../core/api/models';
       />
     } @else {
       <span class="initials">{{ initials() }}</span>
-    }
-  `,
-  styles: `
-    :host {
-      display: inline-flex;
-      flex: none;
-      width: 22px;
-      height: 22px;
-      align-items: center;
-      justify-content: center;
-    }
-    :host(.lg) {
-      width: 56px;
-      height: 56px;
-    }
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .initials {
-      display: grid;
-      place-items: center;
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background: #ededf1;
-      color: #5b5b66;
-      font-size: 0.6rem;
-      font-weight: 700;
-    }
-    :host(.lg) .initials {
-      font-size: 1.1rem;
     }
   `,
 })

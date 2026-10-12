@@ -64,6 +64,7 @@ export function describeEvent(e: MatchEvent): Pick<Row, 'icon' | 'title' | 'deta
 @Component({
   selector: 'app-match-timeline',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './match-timeline.scss',
   template: `
     <section class="timeline" aria-labelledby="timeline-title">
       <h2 id="timeline-title">Lo que pasó en el partido</h2>
@@ -87,75 +88,6 @@ export function describeEvent(e: MatchEvent): Pick<Row, 'icon' | 'title' | 'deta
         <p class="empty">Todavía no hay goles, tarjetas ni cambios.</p>
       }
     </section>
-  `,
-  styles: `
-    .timeline {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #fff;
-      border: 1px solid #e3e3e8;
-      border-radius: 12px;
-    }
-    h2 {
-      margin: 0 0 0.75rem;
-      font-size: 1rem;
-    }
-    ol {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    li {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    li.away {
-      flex-direction: row-reverse;
-      text-align: right;
-    }
-    .minute {
-      min-width: 3rem;
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #5b5b66;
-      font-variant-numeric: tabular-nums;
-    }
-    li.away .minute {
-      text-align: right;
-    }
-    .icon {
-      font-size: 1.1rem;
-      line-height: 1;
-    }
-    .text {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    strong {
-      font-size: 0.9rem;
-      overflow-wrap: anywhere;
-    }
-    small,
-    .empty {
-      font-size: 0.8rem;
-      color: #5b5b66;
-    }
-    .empty {
-      margin: 0;
-    }
-    .visually-hidden {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
-    }
   `,
 })
 export class MatchTimeline {
