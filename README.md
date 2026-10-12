@@ -46,7 +46,7 @@ flowchart LR
     BUS --> MOD
 ```
 
-Decisiones clave (detalle en [`docs/adr/0001-decisiones-base.md`](docs/adr/0001-decisiones-base.md)):
+Decisiones clave (la justificación completa de la arquitectura y de cada tecnología está en [`docs/arquitectura/justificacion.md`](docs/arquitectura/justificacion.md)):
 
 | Decisión | Por qué |
 |---|---|
@@ -153,7 +153,10 @@ cd frontend && npm test
 
 | Documento | Contenido |
 |---|---|
+| [`docs/arquitectura/justificacion.md`](docs/arquitectura/justificacion.md) | **Por qué** este estilo arquitectónico, estos patrones y cada tecnología, con las alternativas descartadas |
+| [`docs/arquitectura/evaluacion-atam.md`](docs/arquitectura/evaluacion-atam.md) | Evaluación ATAM: árbol de utilidad, 8 escenarios, puntos de sensibilidad, compromisos y riesgos |
 | [`docs/adr/0001-decisiones-base.md`](docs/adr/0001-decisiones-base.md) | Decisiones de arquitectura, mercados, modelo de cuotas, liquidación |
+| [`docs/adr/0002-decisiones-integracion.md`](docs/adr/0002-decisiones-integracion.md) | Decisiones al integrar datos reales: plan gratuito de API-Football, vivo con destacados, fuerza de equipos, línea de tiempo, auditoría |
 | [`docs/persona1-plataforma.md`](docs/persona1-plataforma.md) | Diagrama de capas, seguridad, descripción en Acme, análisis PASA |
 | [`docs/persona2-datos.md`](docs/persona2-datos.md) | Adapter de proveedores, fallos externos y presupuesto, escenarios ATAM 1, 2 y 4 |
 | [`docs/persona3-transaccional.md`](docs/persona3-transaccional.md) | Modelo de dominio, flujos de apuesta y liquidación, escenarios ATAM 3 y 5 |
