@@ -510,7 +510,11 @@ components:
       required: [email, password, displayName]
       properties:
         email: { type: string, format: email }
-        password: { type: string, minLength: 8 }
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          description: Mínimo 8 caracteres y máximo 72 bytes (límite de bcrypt); con caracteres multibyte el máximo real es menor. Si se excede, 400 VALIDATION_ERROR en fields.password.
         displayName: { type: string, minLength: 2, maxLength: 40 }
     LoginRequest:
       type: object
