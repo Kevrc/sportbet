@@ -13,7 +13,7 @@ Partidos reales de Premier League, LaLiga y Liga 1 de Perú (vía API-Football) 
 - **En vivo:** marcador y sucesos se actualizan solos por SSE, sin recargar la página.
 - **Apuestas:** simples y combinadas en 3 mercados (1X2, más/menos de 2.5 goles, ambos marcan). Las cuotas salen de un modelo de Poisson con la fuerza de cada equipo, calculada a partir de la tabla de posiciones.
 - **Billetera:** saldo, movimientos e historial de apuestas. Las apuestas se liquidan solas al terminar el partido (ganada, perdida o anulada).
-- **Administración:** listar usuarios, bloquear o desbloquear y dar o quitar el rol de admin.
+- **Administración:** estadísticas (apuestas, total apostado y pagado, resultado de la casa), actividad reciente y gestión de usuarios (bloquear o desbloquear, dar o quitar admin).
 
 ## Arquitectura
 
@@ -164,8 +164,7 @@ cd frontend && npm test
 
 - **Plan gratuito de API-Football:** solo da fechas de ayer a mañana y tablas de posiciones hasta la temporada 2024. Por eso la fuerza de los equipos es histórica, y los recién ascendidos quedan en 1.00.
 - **Una sola instancia de la API:** el bus de eventos es en memoria. Para escalar a varias instancias habría que pasarlo a Postgres `LISTEN/NOTIFY` o Redis sin cambiar su interfaz.
-- **Estadísticas del panel de admin:** recortadas (2º en el orden de recorte del plan); `BetPlaced` y `BetSettled` todavía no se publican en el bus.
-- **Combinada con dos selecciones del mismo partido:** si se envía directo a la API responde 500 en vez de 422 `CORRELATED_SELECTIONS` (el error de dominio no está mapeado). El frontend lo impide, así que no se ve en la app.
+- **Estadísticas del panel de admin:** cuentan las apuestas desde que el módulo admin escucha el bus. El bus es en memoria, así que un anuncio perdido (por ejemplo, si la API se reinicia en ese instante) no se recupera en la auditoría, aunque la apuesta y su liquidación sí quedan bien.
 
 ## Equipo
 
