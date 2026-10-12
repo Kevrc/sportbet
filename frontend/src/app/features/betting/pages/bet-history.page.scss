@@ -4,6 +4,7 @@
   @include theme.tokens;
   @include theme.page-pair;
   display: block;
+  min-height: 100vh;
   font-family: Inter, 'Segoe UI', sans-serif;
 }
 
@@ -43,7 +44,7 @@ h1 {
     display: inline-flex;
     flex-direction: column;
     gap: 0.35rem;
-    background: var(--sportbet-superficie);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
     font-size: 0.8rem;
     font-weight: 650;
@@ -141,14 +142,14 @@ h1 {
   .kind {
     padding: 0.2rem 0.5rem;
     border-radius: 6px;
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto);
     font-weight: 700;
   }
 
   .when {
     flex: 1;
-    background: var(--sportbet-superficie);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
     font-size: 0.85rem;
     font-variant-numeric: tabular-nums;
@@ -212,7 +213,7 @@ h1 {
     gap: 0.75rem;
     padding: 0.5rem 0.4rem;
     border-top: 1px solid var(--sportbet-borde);
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto);
   }
 }
@@ -230,13 +231,13 @@ h1 {
   }
 
   .market {
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
     font-size: 0.8rem;
   }
 
   .pick {
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-azul-texto);
     font-weight: 650;
   }
@@ -316,7 +317,7 @@ h1 {
   }
 
   dt {
-    background: var(--sportbet-superficie);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
     font-size: 0.74rem;
   }
@@ -329,15 +330,15 @@ h1 {
     &.plus {
       padding: 0.1rem 0.35rem;
       border-radius: 5px;
-      background: var(--sportbet-exito-fondo);
-      color: var(--sportbet-exito-texto);
+      background: transparent;
+      color: var(--sportbet-texto);
     }
 
     &.minus {
       padding: 0.1rem 0.35rem;
       border-radius: 5px;
-      background: var(--sportbet-error-fondo);
-      color: var(--sportbet-error-texto);
+      background: transparent;
+      color: var(--sportbet-texto);
     }
   }
 }
@@ -352,7 +353,7 @@ h1 {
 .empty a {
   padding: 0.15rem 0.3rem;
   border-radius: 4px;
-  background: var(--sportbet-superficie);
+  background: transparent;
   color: var(--sportbet-azul-texto);
   font-weight: 650;
 }
