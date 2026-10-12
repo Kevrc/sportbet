@@ -4,8 +4,11 @@
   @include theme.tokens;
   @include theme.page-pair;
   display: block;
-  padding-bottom: 0;
   font-family: Inter, 'Segoe UI', sans-serif;
+}
+
+:is(.back, .selection, button.secondary):focus-visible {
+  @include theme.focus-ring;
 }
 
 .back {
@@ -18,21 +21,12 @@
   color: var(--sportbet-azul-texto);
   font-weight: 650;
   text-decoration: none;
-  transition:
-    color 180ms ease,
-    transform 180ms ease;
+  transition: transform 180ms ease;
 
   &:hover {
-    background: var(--sportbet-fondo);
-    color: var(--sportbet-azul-texto);
     transform: translateX(-2px);
   }
 
-  &:focus-visible {
-    @include theme.focus-ring;
-    background: var(--sportbet-fondo);
-    color: var(--sportbet-azul-texto);
-  }
 }
 
 .muted {
@@ -77,15 +71,18 @@
   color: var(--sportbet-error-texto);
 }
 
-.hero {
-  margin-bottom: 1rem;
-  padding: clamp(1rem, 3vw, 1.5rem);
+.hero,
+.market {
   background: var(--sportbet-superficie);
   color: var(--sportbet-texto);
   border: 1px solid var(--sportbet-borde);
   border-radius: 12px;
-  box-shadow: 0 5px 18px
-    color-mix(in srgb, var(--sportbet-borde) 55%, var(--sportbet-superficie));
+  box-shadow: 0 4px 14px var(--sportbet-borde);
+}
+
+.hero {
+  margin-bottom: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
   text-align: center;
 }
 
@@ -157,8 +154,6 @@
 
 .score {
   display: block;
-  background: var(--sportbet-superficie-elevada);
-  color: var(--sportbet-texto);
   font-size: clamp(1.6rem, 5vw, 2.2rem);
   font-variant-numeric: tabular-nums;
 }
@@ -221,19 +216,11 @@
 .market {
   margin-bottom: 1rem;
   padding: 0.9rem 1rem;
-  background: var(--sportbet-superficie);
-  color: var(--sportbet-texto);
-  border: 1px solid var(--sportbet-borde);
-  border-radius: 12px;
-  box-shadow: 0 3px 12px
-    color-mix(in srgb, var(--sportbet-borde) 45%, var(--sportbet-superficie));
 
   h2 {
     margin: 0 0 0.75rem;
     padding-bottom: 0.55rem;
     border-bottom: 1px solid var(--sportbet-borde);
-    background: var(--sportbet-superficie);
-    color: var(--sportbet-texto);
     font-size: 1rem;
   }
 }
@@ -266,8 +253,7 @@
   background: var(--sportbet-superficie);
   border: 1px solid var(--sportbet-borde);
   border-radius: 8px;
-  box-shadow: 0 1px 3px
-    color-mix(in srgb, var(--sportbet-borde) 50%, var(--sportbet-superficie));
+  box-shadow: 0 1px 3px var(--sportbet-borde);
   cursor: pointer;
   transition:
     background-color 180ms ease,
@@ -282,12 +268,6 @@
     transform: translateY(-1px);
   }
 
-  &:focus-visible {
-    @include theme.focus-ring;
-    background: var(--sportbet-superficie);
-    color: var(--sportbet-texto);
-  }
-
   &:disabled {
     background: var(--sportbet-superficie-elevada);
     color: var(--sportbet-texto-deshabilitado);
@@ -295,16 +275,19 @@
     cursor: not-allowed;
   }
 
+  &.selected,
+  &.selected:hover:not(:disabled) {
+    color: var(--sportbet-texto-sobre-acento);
+  }
+
   &.selected {
     background: var(--sportbet-rojo);
-    color: var(--sportbet-texto-sobre-acento);
     border-color: var(--sportbet-rojo);
     box-shadow: inset 0 0 0 1px var(--sportbet-rojo-hover);
   }
 
   &.selected:hover:not(:disabled) {
     background: var(--sportbet-rojo-hover);
-    color: var(--sportbet-texto-sobre-acento);
     border-color: var(--sportbet-rojo-hover);
   }
 
@@ -338,18 +321,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.outcome {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.15rem 0.35rem;
-  border-radius: 999px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 button.secondary {
   min-height: 2.4rem;
   padding: 0.4rem 0.75rem;
@@ -369,12 +340,6 @@ button.secondary {
     background: var(--sportbet-superficie-elevada);
     color: var(--sportbet-texto);
     border-color: var(--sportbet-azul);
-  }
-
-  &:focus-visible {
-    @include theme.focus-ring;
-    background: var(--sportbet-superficie);
-    color: var(--sportbet-texto);
   }
 }
 
@@ -396,30 +361,19 @@ button.secondary {
   color: var(--sportbet-texto-sobre-acento);
   background: var(--sportbet-rojo);
   border: 0;
-  box-shadow: 0 -4px 16px
-    color-mix(in srgb, var(--sportbet-borde) 70%, var(--sportbet-superficie));
+  box-shadow: 0 -4px 16px var(--sportbet-borde);
   cursor: pointer;
   transition: background-color 180ms ease;
 
   span {
-    background: var(--sportbet-rojo);
-    color: var(--sportbet-texto-sobre-acento);
     white-space: nowrap;
   }
 
   &:hover {
     background: var(--sportbet-rojo-hover);
-    color: var(--sportbet-texto-sobre-acento);
-
-    span {
-      background: var(--sportbet-rojo-hover);
-      color: var(--sportbet-texto-sobre-acento);
-    }
   }
 
-  &:focus-visible {
-    @include theme.focus-ring;
-  }
+
 
   .bar-odd {
     font-variant-numeric: tabular-nums;
