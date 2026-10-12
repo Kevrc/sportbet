@@ -87,6 +87,9 @@ export interface League {
   name: string;
   country: string;
   featured: boolean;
+  /** Logo de la liga y bandera del país (https); null en el replay. */
+  logoUrl?: string | null;
+  flagUrl?: string | null;
 }
 export interface Team {
   id: string;
@@ -106,6 +109,9 @@ export interface SportEvent {
   minute?: number | null;
   featured: boolean;
   liveUpdatedAt?: string | null;
+  /** Jornada como la nombra el proveedor ("Regular Season - 8"). */
+  round?: string | null;
+  venue?: { name: string; city?: string | null } | null;
 }
 export interface Selection {
   id: string;
