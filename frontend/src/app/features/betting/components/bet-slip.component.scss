@@ -50,7 +50,7 @@
   margin: 0;
   padding: 0.5rem 0.6rem;
   border-radius: 8px;
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto-secundario);
   font-size: 0.85rem;
 }
@@ -117,13 +117,13 @@
     a {
       padding: 0.35rem 0.55rem;
       border-radius: 6px;
-      background: var(--sportbet-superficie);
+      background: transparent;
       color: var(--sportbet-azul-texto);
       font-weight: 650;
       text-decoration: none;
 
       &:hover {
-        background: var(--sportbet-superficie-elevada);
+        background: transparent;
         color: var(--sportbet-azul-texto);
       }
 
@@ -164,12 +164,12 @@ dl {
     gap: 0.75rem;
     padding: 0.6rem 0.25rem;
     border-top: 1px solid var(--sportbet-borde);
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto);
   }
 
   li.closed {
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
   }
 }
@@ -187,13 +187,13 @@ dl {
   }
 
   .market {
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
     font-size: 0.78rem;
   }
 
   .pick {
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-azul-texto);
     font-weight: 650;
   }
@@ -211,7 +211,7 @@ dl {
 }
 
 .selections li.changed {
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto);
 }
 
@@ -230,7 +230,7 @@ dl {
   .old {
     padding: 0.1rem 0.25rem;
     border-radius: 4px;
-    background: var(--sportbet-superficie);
+    background: transparent;
     color: var(--sportbet-texto-deshabilitado);
   }
 }
@@ -269,7 +269,7 @@ dl {
   label {
     display: block;
     margin-bottom: 0.35rem;
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
     font-size: 0.8rem;
     font-weight: 650;
@@ -291,7 +291,7 @@ dl {
       box-shadow 180ms ease;
 
     &::placeholder {
-      background: var(--sportbet-superficie);
+      background: transparent;
       color: var(--sportbet-texto-deshabilitado);
       opacity: 1;
     }
@@ -311,7 +311,7 @@ dl {
     display: block;
     margin-top: 0.3rem;
     padding: 0;
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto-secundario);
     font-size: 0.78rem;
   }
