@@ -91,3 +91,40 @@ func TestApplyLiveScoresIgnoresEventsNotImported(t *testing.T) {
 		t.Fatalf("evento = %s %d min %d; want LIVE 1 min 12", status, home, minute)
 	}
 }
+
+func TestImportFixturesStoresTeamLogoAndKeepsItWhenMissing(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	repo := infrastructure.NewRepository(pool)
+	now := time.Now().UTC()
+	logo := "https://media.api-sports.io/football/teams/40.png"
+	fixture := func(homeLogo string) contracts.ProviderFixture {
+		return contracts.ProviderFixture{
+			ExternalID: "200", StartAt: now.Add(time.Hour), Status: contracts.MatchScheduled,
+			League: contracts.ProviderLeague{ExternalID: "39", Name: "Premier"},
+			Home:   contracts.ProviderTeam{ExternalID: "40", Name: "Liverpool", LogoURL: homeLogo},
+			Away:   contracts.ProviderTeam{ExternalID: "50", Name: "Manchester City"},
+		}
+	}
+	if _, err := repo.ImportFixtures(ctx, "apifootball", now, []contracts.ProviderFixture{fixture(logo)}, false); err != nil {
+		t.Fatal(err)
+	}
+	// Una importación posterior sin escudo no debe borrarlo.
+	if _, err := repo.ImportFixtures(ctx, "apifootball", now, []contracts.ProviderFixture{fixture("")}, false); err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	if err := pool.QueryRow(ctx, `SELECT id::text FROM events`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	event, err := repo.GetEvent(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if event.Home.LogoURL == nil || *event.Home.LogoURL != logo {
+		t.Fatalf("escudo local = %v; want %s", event.Home.LogoURL, logo)
+	}
+	if event.Away.LogoURL != nil {
+		t.Fatalf("escudo visitante = %v; want nil", *event.Away.LogoURL)
+	}
+}

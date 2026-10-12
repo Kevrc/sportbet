@@ -43,8 +43,9 @@ type leagueDTO struct {
 }
 
 type teamDTO struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID      string  `json:"id"`
+	Name    string  `json:"name"`
+	LogoURL *string `json:"logoUrl"`
 }
 
 type eventDTO struct {
@@ -242,8 +243,8 @@ func toLeague(league application.League) leagueDTO {
 func toEvent(event application.Event, detail bool) eventDTO {
 	out := eventDTO{
 		ID: event.ID, League: toLeague(event.League),
-		Home:    teamDTO{ID: event.Home.ID, Name: event.Home.Name},
-		Away:    teamDTO{ID: event.Away.ID, Name: event.Away.Name},
+		Home:    teamDTO{ID: event.Home.ID, Name: event.Home.Name, LogoURL: event.Home.LogoURL},
+		Away:    teamDTO{ID: event.Away.ID, Name: event.Away.Name, LogoURL: event.Away.LogoURL},
 		StartAt: event.StartAt, Status: string(event.Status),
 		HomeScore: event.HomeScore, AwayScore: event.AwayScore, Minute: event.Minute,
 		Featured: event.Featured, LiveUpdatedAt: event.LiveUpdatedAt,

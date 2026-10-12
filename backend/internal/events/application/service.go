@@ -19,8 +19,9 @@ type League struct {
 }
 
 type Team struct {
-	ID   string
-	Name string
+	ID      string
+	Name    string
+	LogoURL *string
 }
 
 type Event struct {

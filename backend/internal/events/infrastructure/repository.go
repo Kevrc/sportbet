@@ -419,7 +419,8 @@ func upsertTeam(ctx context.Context, tx pgx.Tx, provider string, team contracts.
 		SELECT entity_id::text FROM external_refs
 		WHERE provider = $1 AND entity_type = 'team' AND external_id = $2`, provider, team.ExternalID).Scan(&id)
 	if err == nil {
-		_, err = tx.Exec(ctx, `UPDATE teams SET name = $2 WHERE id = $1::uuid`, id, team.Name)
+		_, err = tx.Exec(ctx, `UPDATE teams SET name = $2, logo_url = COALESCE(NULLIF($3, ''), logo_url) WHERE id = $1::uuid`,
+			id, team.Name, team.LogoURL)
 		if err != nil {
 			return "", fmt.Errorf("events: actualizar equipo: %w", err)
 		}
@@ -428,7 +429,8 @@ func upsertTeam(ctx context.Context, tx pgx.Tx, provider string, team contracts.
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return "", fmt.Errorf("events: localizar equipo: %w", err)
 	}
-	if err := tx.QueryRow(ctx, `INSERT INTO teams (name) VALUES ($1) RETURNING id::text`, team.Name).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, `INSERT INTO teams (name, logo_url) VALUES ($1, NULLIF($2, '')) RETURNING id::text`,
+		team.Name, team.LogoURL).Scan(&id); err != nil {
 		return "", fmt.Errorf("events: insertar equipo: %w", err)
 	}
 	return id, insertExternalRef(ctx, tx, provider, "team", id, team.ExternalID)
@@ -455,7 +457,7 @@ func insertExternalRef(ctx context.Context, tx pgx.Tx, provider, entityType, ent
 
 const eventSelect = `
 	SELECT e.id::text, l.id::text, l.name, l.country, l.featured,
-	       home.id::text, home.name, away.id::text, away.name,
+	       home.id::text, home.name, home.logo_url, away.id::text, away.name, away.logo_url,
 	       e.start_at, e.status, e.home_score, e.away_score, e.minute,
 	       e.featured, e.live_updated_at
 	FROM events e
@@ -474,7 +476,7 @@ func scanEvent(row scanner) (application.Event, error) {
 	var homeScore, awayScore, minute *int32
 	err := row.Scan(
 		&event.ID, &event.League.ID, &event.League.Name, &event.League.Country, &event.League.Featured,
-		&event.Home.ID, &event.Home.Name, &event.Away.ID, &event.Away.Name,
+		&event.Home.ID, &event.Home.Name, &event.Home.LogoURL, &event.Away.ID, &event.Away.Name, &event.Away.LogoURL,
 		&event.StartAt, &status, &homeScore, &awayScore, &minute, &event.Featured, &event.LiveUpdatedAt,
 	)
 	if err != nil {

@@ -170,3 +170,43 @@ func TestAPIFootballErrorsFieldFormats(t *testing.T) {
 		})
 	}
 }
+
+func TestSafeLogoURLOnlyAcceptsHTTPS(t *testing.T) {
+	cases := map[string]string{
+		"https://media.api-sports.io/football/teams/40.png": "https://media.api-sports.io/football/teams/40.png",
+		"http://media.api-sports.io/football/teams/40.png":  "",
+		"javascript:alert(1)":                               "",
+		"":                                                  "",
+		"https://":                                          "",
+	}
+	for in, want := range cases {
+		if got := safeLogoURL(in); got != want {
+			t.Errorf("safeLogoURL(%q) = %q; want %q", in, got, want)
+		}
+	}
+}
+
+func TestFixturesByDateIncludesTeamLogos(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"errors":[],"response":[{
+			"fixture": {"id": 7, "date": "2026-10-11T23:30:00+00:00", "status": {"short": "NS"}},
+			"league": {"id": 281, "name": "Liga 1", "country": "Peru"},
+			"teams": {"home": {"id": 40, "name": "Cusco", "logo": "https://media.api-sports.io/football/teams/40.png"},
+			          "away": {"id": 41, "name": "Alianza Lima", "logo": "http://inseguro.example/41.png"}},
+			"goals": {"home": null, "away": null},
+			"score": {"fulltime": {"home": null, "away": null}}
+		}]}`))
+	}))
+	defer server.Close()
+	provider, err := NewAPIFootball(server.URL, "test-key", server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtures, err := provider.FixturesByDate(context.Background(), time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC), nil)
+	if err != nil || len(fixtures) != 1 {
+		t.Fatalf("fixtures = %v, err = %v", fixtures, err)
+	}
+	if fixtures[0].Home.LogoURL != "https://media.api-sports.io/football/teams/40.png" || fixtures[0].Away.LogoURL != "" {
+		t.Fatalf("escudos = %q / %q", fixtures[0].Home.LogoURL, fixtures[0].Away.LogoURL)
+	}
+}
