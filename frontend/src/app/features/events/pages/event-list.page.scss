@@ -92,6 +92,7 @@ h1 {
       outline: 2px solid var(--sportbet-azul);
       outline-offset: 1px;
     }
+
   }
 }
 
@@ -338,7 +339,8 @@ button {
   &:disabled {
     background: var(--sportbet-superficie-elevada);
     border-color: var(--sportbet-borde);
-    color: var(--sportbet-texto-deshabilitado);
+    color: var(--sportbet-texto-secundario);
+    opacity: 1;
     cursor: not-allowed;
   }
 

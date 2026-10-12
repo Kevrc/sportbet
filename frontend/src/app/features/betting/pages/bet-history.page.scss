@@ -383,8 +383,9 @@ button {
 
   &:disabled {
     background: var(--sportbet-superficie-elevada);
-    color: var(--sportbet-texto-deshabilitado);
+    color: var(--sportbet-texto-secundario);
     border-color: var(--sportbet-borde);
+    opacity: 1;
     cursor: not-allowed;
   }
 

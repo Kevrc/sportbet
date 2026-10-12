@@ -27,6 +27,7 @@
 
 @mixin page-pair {
   @include pair(var(--sportbet-fondo), var(--sportbet-texto));
+  color-scheme: light;
 }
 
 @mixin surface-pair {
