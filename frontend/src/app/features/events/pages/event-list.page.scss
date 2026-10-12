@@ -4,6 +4,7 @@
   @include theme.tokens;
   @include theme.page-pair;
   display: block;
+  min-height: 100vh;
   font-family: Inter, 'Segoe UI', sans-serif;
 }
 
@@ -52,7 +53,7 @@ h1 {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--sportbet-texto-secundario);
-    background: var(--sportbet-superficie);
+    background: transparent;
   }
 
   .check {
@@ -84,7 +85,7 @@ h1 {
 
     &::placeholder {
       color: var(--sportbet-texto-deshabilitado);
-      background: var(--sportbet-superficie);
+      background: transparent;
     }
 
     &:focus-visible {
@@ -159,7 +160,7 @@ h1 {
     border: 1px solid var(--sportbet-borde);
     border-bottom: 0;
     border-radius: 12px 12px 0 0;
-    background: var(--sportbet-superficie-elevada);
+    background: transparent;
     color: var(--sportbet-texto);
     font-size: 1rem;
   }
@@ -206,7 +207,7 @@ h1 {
 .country {
   padding-left: 0.5rem;
   border-left: 2px solid var(--sportbet-dorado);
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto-secundario);
   font-size: 0.8rem;
   font-weight: 400;
@@ -241,7 +242,7 @@ h1 {
 }
 
 .when {
-  background: var(--sportbet-superficie);
+  background: transparent;
   color: var(--sportbet-texto-secundario);
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
@@ -251,7 +252,7 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto);
   font-weight: 600;
 }
@@ -263,7 +264,7 @@ h1 {
 }
 
 .score {
-  background: var(--sportbet-superficie-elevada);
+  background: transparent;
   color: var(--sportbet-texto);
   font-weight: 700;
   font-variant-numeric: tabular-nums;

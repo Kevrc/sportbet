@@ -35,7 +35,7 @@
 }
 
 @mixin secondary-surface-pair {
-  @include pair(var(--sportbet-superficie), var(--sportbet-texto-secundario));
+  @include pair(transparent, var(--sportbet-texto-secundario));
 }
 
 @mixin elevated-pair {
@@ -43,7 +43,7 @@
 }
 
 @mixin secondary-elevated-pair {
-  @include pair(var(--sportbet-superficie-elevada), var(--sportbet-texto-secundario));
+  @include pair(transparent, var(--sportbet-texto-secundario));
 }
 
 @mixin focus-ring {
