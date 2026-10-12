@@ -104,6 +104,10 @@ h1 {
   margin-bottom: 1.25rem;
 
   h2 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
     margin: 0 0 0.5rem;
     font-size: 1.05rem;
   }
@@ -121,6 +125,20 @@ h1 {
   li + li {
     border-top: 1px solid #ededf1;
   }
+}
+
+.league-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.flag {
+  width: 16px;
+  height: 12px;
+  object-fit: cover;
+  border-radius: 2px;
+  vertical-align: -1px;
 }
 
 .country {

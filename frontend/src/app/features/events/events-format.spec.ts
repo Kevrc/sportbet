@@ -1,5 +1,7 @@
 import { event, league, market } from './events-testing';
 import {
+  formatRound,
+  formatVenue,
   groupByLeague,
   marketLockReason,
   marketTitle,
@@ -86,5 +88,19 @@ describe('groupByLeague', () => {
 
   it('sin eventos no hay grupos', () => {
     expect(groupByLeague([])).toEqual([]);
+  });
+});
+
+describe('formatRound y formatVenue', () => {
+  it('traduce la jornada regular y deja legibles las demás', () => {
+    expect(formatRound('Regular Season - 8')).toBe('Jornada 8');
+    expect(formatRound('Clausura - 12')).toBe('Clausura · 12');
+    expect(formatRound(null)).toBeNull();
+  });
+
+  it('arma estadio y ciudad', () => {
+    expect(formatVenue({ name: 'Anfield', city: 'Liverpool' })).toBe('Anfield, Liverpool');
+    expect(formatVenue({ name: 'Estadio Monumental', city: null })).toBe('Estadio Monumental');
+    expect(formatVenue(null)).toBeNull();
   });
 });

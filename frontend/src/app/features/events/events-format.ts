@@ -75,3 +75,17 @@ export function groupByLeague(events: readonly SportEvent[]): LeagueGroup[] {
       a.league.name.localeCompare(b.league.name),
   );
 }
+
+/** "Regular Season - 8" → "Jornada 8"; otros nombres se muestran con "·". */
+export function formatRound(round: string | null | undefined): string | null {
+  if (!round) return null;
+  const regular = /^Regular Season\s*-\s*(\d+)$/i.exec(round.trim());
+  if (regular) return `Jornada ${regular[1]}`;
+  return round.trim().replace(/\s*-\s*/g, ' · ');
+}
+
+/** "Anfield, Liverpool"; solo el estadio si no hay ciudad. */
+export function formatVenue(venue: SportEvent['venue']): string | null {
+  if (!venue?.name) return null;
+  return venue.city ? `${venue.name}, ${venue.city}` : venue.name;
+}
