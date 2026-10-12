@@ -35,8 +35,10 @@ export function describeEvent(e: MatchEvent): Pick<Row, 'icon' | 'title' | 'deta
       return {
         icon: '⚽',
         title: player,
+        // API-Football asigna el autogol al equipo que se beneficia, así que
+        // aparece del lado de quien suma el gol y lo marca un rival.
         detail: detail.includes('own')
-          ? 'En contra'
+          ? 'Autogol del rival'
           : detail.includes('penalty')
             ? 'De penal'
             : e.assist
