@@ -10,13 +10,18 @@
 .timeline {
   margin-top: 1rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e3e3e8;
+  background: var(--sportbet-superficie);
+  color: var(--sportbet-texto);
+  border: 1px solid var(--sportbet-borde);
   border-radius: 12px;
+  box-shadow: 0 3px 12px
+    color-mix(in srgb, var(--sportbet-borde) 45%, var(--sportbet-superficie));
 }
 
 h2 {
   margin: 0 0 0.75rem;
+  background: var(--sportbet-superficie);
+  color: var(--sportbet-texto);
   font-size: 1rem;
 }
 
@@ -33,6 +38,10 @@ li {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: var(--sportbet-superficie-elevada);
+  color: var(--sportbet-texto);
 }
 
 li.away {
@@ -42,9 +51,10 @@ li.away {
 
 .minute {
   min-width: 3rem;
+  background: var(--sportbet-superficie-elevada);
+  color: var(--sportbet-texto-secundario);
   font-size: 0.8rem;
   font-weight: 700;
-  color: #5b5b66;
   font-variant-numeric: tabular-nums;
 }
 
@@ -53,7 +63,16 @@ li.away .minute {
 }
 
 .icon {
-  font-size: 1.1rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--sportbet-borde);
+  border-radius: 50%;
+  background: var(--sportbet-superficie);
+  color: var(--sportbet-texto);
+  font-size: 1rem;
   line-height: 1;
 }
 
@@ -70,12 +89,15 @@ strong {
 
 small,
 .empty {
+  background: var(--sportbet-superficie-elevada);
+  color: var(--sportbet-texto-secundario);
   font-size: 0.8rem;
-  color: #5b5b66;
 }
 
 .empty {
   margin: 0;
+  padding: 0.75rem;
+  border-radius: 8px;
 }
 
 .visually-hidden {
@@ -85,4 +107,15 @@ small,
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .timeline {
+    padding: 0.8rem 0.65rem;
+  }
+
+  li {
+    gap: 0.35rem;
+    padding: 0.5rem 0.4rem;
+  }
 }
