@@ -20,7 +20,7 @@ describe('describeEvent', () => {
       detail: 'Asistencia: Szoboszlai',
     });
     expect(describeEvent(ev({ detail: 'Penalty' })).detail).toBe('De penal');
-    expect(describeEvent(ev({ detail: 'Own Goal' })).detail).toBe('En contra');
+    expect(describeEvent(ev({ detail: 'Own Goal' })).detail).toBe('Autogol del rival');
     expect(describeEvent(ev({ detail: 'Missed Penalty' })).icon).toBe('❌');
   });
 
