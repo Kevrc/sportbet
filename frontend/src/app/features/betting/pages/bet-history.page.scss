@@ -186,9 +186,6 @@ h1 {
   }
 
   &[data-status='VOID'] {
-    background: var(--sportbet-superficie-elevada);
-    color: var(--sportbet-texto-secundario);
-
     &::before {
       content: '—';
     }
@@ -286,9 +283,6 @@ h1 {
     }
 
     &[data-result='VOID'] {
-      background: var(--sportbet-superficie-elevada);
-      color: var(--sportbet-texto-secundario);
-
       &::before {
         content: '—';
       }
