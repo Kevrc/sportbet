@@ -50,6 +50,31 @@ type LiveScore struct {
 	AwayScore  int
 	Minute     int
 	ObservedAt time.Time
+	// Events es la lista completa de sucesos del partido hasta ahora, en
+	// orden. Vacía significa "sin datos" y no borra los ya guardados.
+	Events []MatchEvent
+}
+
+// Tipos de suceso y lado del equipo en MatchEvent.
+const (
+	MatchEventGoal  = "GOAL"
+	MatchEventCard  = "CARD"
+	MatchEventSubst = "SUBST"
+	MatchEventVAR   = "VAR"
+
+	SideHome = "HOME"
+	SideAway = "AWAY"
+)
+
+// MatchEvent es un suceso del partido: gol, tarjeta, cambio o revisión VAR.
+type MatchEvent struct {
+	Minute int
+	Extra  int    // minutos de descuento: 90+3 es Minute 90, Extra 3
+	Side   string // SideHome | SideAway
+	Type   string // MatchEventGoal | MatchEventCard | MatchEventSubst | MatchEventVAR
+	Detail string // texto del proveedor: "Normal Goal", "Penalty", "Yellow Card"…
+	Player string
+	Assist string // asistencia; en un cambio, el otro jugador
 }
 
 // FixtureProvider entrega el calendario y los resultados finales.
