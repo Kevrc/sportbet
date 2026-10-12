@@ -45,7 +45,7 @@ func TestSettlerSweep(t *testing.T) {
 	wallet := &mockWallet{}
 	results := &mockResults{}
 
-	settler := application.NewSettler(nil, wallet, results, nil, time.Now)
+	settler := application.NewSettler(nil, wallet, results, nil, time.Now, nil)
 	// Only test if it exists
 	if settler == nil {
 		t.Fatal("expected settler to be initialized")

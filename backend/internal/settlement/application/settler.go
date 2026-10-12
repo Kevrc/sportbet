@@ -22,10 +22,12 @@ type Settler struct {
 	results contracts.ResultReader
 	repo    *infrastructure.Repository
 	clock   func() time.Time
+	bus     eventbus.Bus
 }
 
-func NewSettler(pool *pgxpool.Pool, wallet contracts.WalletService, results contracts.ResultReader, repo *infrastructure.Repository, clock func() time.Time) *Settler {
-	return &Settler{pool: pool, wallet: wallet, results: results, repo: repo, clock: clock}
+// NewSettler recibe el bus para anunciar BetSettled; con nil no publica.
+func NewSettler(pool *pgxpool.Pool, wallet contracts.WalletService, results contracts.ResultReader, repo *infrastructure.Repository, clock func() time.Time, bus eventbus.Bus) *Settler {
+	return &Settler{pool: pool, wallet: wallet, results: results, repo: repo, clock: clock, bus: bus}
 }
 
 // HandleMatchFinished es invocado por el bus de eventos cuando un partido termina.
@@ -80,7 +82,8 @@ func (s *Settler) SettleEvent(ctx context.Context, eventID string) error {
 
 // SettleBet evalúa el estado final de una apuesta y ejecuta el pago o reembolso atómicamente.
 func (s *Settler) SettleBet(ctx context.Context, betID string) error {
-	return db.WithTx(ctx, s.pool, func(q db.Querier) error {
+	var settled *eventbus.BetSettled
+	err := db.WithTx(ctx, s.pool, func(q db.Querier) error {
 		bet, selections, err := s.repo.GetBetWithSelections(ctx, q, betID)
 		if err != nil {
 			return err
@@ -151,6 +154,15 @@ func (s *Settler) SettleBet(ctx context.Context, betID string) error {
 			}
 		}
 
+		settled = &eventbus.BetSettled{
+			BetID: betID, UserID: bet.UserID, Status: contracts.BetStatus(newStatus),
+			Payout: payout, SettledAt: s.clock(),
+		}
 		return nil
 	})
+	// Se anuncia solo si esta llamada liquidó la apuesta, y después del COMMIT.
+	if err == nil && settled != nil && s.bus != nil {
+		s.bus.Publish(ctx, *settled)
+	}
+	return err
 }

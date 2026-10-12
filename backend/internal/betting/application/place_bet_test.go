@@ -14,6 +14,7 @@ import (
 	"sportbet/internal/betting/domain"
 	"sportbet/internal/shared/contracts"
 	"sportbet/internal/shared/db"
+	"sportbet/internal/shared/eventbus"
 	"sportbet/internal/shared/money"
 	"sportbet/migrations"
 )
@@ -103,7 +104,7 @@ func TestPlaceBet(t *testing.T) {
 	wallet := &mockWallet{}
 	repo := &mockRepo{}
 
-	uc := application.NewPlaceBetUseCase(pool, markets, wallet, repo, time.Now)
+	uc := application.NewPlaceBetUseCase(pool, markets, wallet, repo, time.Now, nil)
 
 	res, err := uc.Execute(context.Background(), application.PlaceBetCommand{
 		UserID:         "user-1",
@@ -142,7 +143,7 @@ func TestPlaceBet_Correlated(t *testing.T) {
 	wallet := &mockWallet{}
 	repo := &mockRepo{}
 
-	uc := application.NewPlaceBetUseCase(pool, markets, wallet, repo, time.Now)
+	uc := application.NewPlaceBetUseCase(pool, markets, wallet, repo, time.Now, nil)
 
 	_, err := uc.Execute(context.Background(), application.PlaceBetCommand{
 		UserID:         "user-1",
@@ -156,5 +157,41 @@ func TestPlaceBet_Correlated(t *testing.T) {
 
 	if err != domain.ErrCorrelatedSelections {
 		t.Fatalf("expected ErrCorrelatedSelections, got: %v", err)
+	}
+}
+
+func TestPlaceBetPublishesBetPlacedAfterCommit(t *testing.T) {
+	pool := testPool(t)
+	markets := &mockMarket{selections: map[string]contracts.SelectionInfo{
+		"sel-1": {SelectionID: "sel-1", EventID: "ev-1", Odd: 214, MarketStatus: contracts.MarketOpen, EventStatus: contracts.MatchScheduled, EventStartAt: time.Now().Add(time.Hour)},
+	}}
+	bus := eventbus.NewRecorder()
+	uc := application.NewPlaceBetUseCase(pool, markets, &mockWallet{}, &mockRepo{}, time.Now, bus)
+
+	if _, err := uc.Execute(context.Background(), application.PlaceBetCommand{
+		UserID: "user-1", IdempotencyKey: "idem-pub", Stake: money.FromCents(1000),
+		Selections: []application.SelectionInput{{SelectionID: "sel-1", Odd: 214}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	events := bus.Events()
+	if len(events) != 1 {
+		t.Fatalf("eventos = %+v; want 1 BetPlaced", events)
+	}
+	placed, ok := events[0].(eventbus.BetPlaced)
+	if !ok || placed.BetID != "bet-123" || placed.UserID != "user-1" || placed.Stake != 1000 ||
+		placed.TotalOdd != 214 || placed.Selections != 1 {
+		t.Fatalf("BetPlaced = %+v", events[0])
+	}
+
+	// Una apuesta rechazada no se anuncia.
+	if _, err := uc.Execute(context.Background(), application.PlaceBetCommand{
+		UserID: "user-1", IdempotencyKey: "idem-pub-2", Stake: money.FromCents(1),
+		Selections: []application.SelectionInput{{SelectionID: "sel-1", Odd: 214}},
+	}); err == nil {
+		t.Fatal("esperaba error por stake bajo")
+	}
+	if len(bus.Events()) != 1 {
+		t.Fatalf("no debe anunciar apuestas rechazadas: %+v", bus.Events())
 	}
 }
