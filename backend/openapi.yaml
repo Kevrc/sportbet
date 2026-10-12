@@ -570,6 +570,8 @@ components:
         name: { type: string }
         country: { type: string }
         featured: { type: boolean }
+        logoUrl: { type: [string, 'null'], format: uri, description: Logo de la liga (https) }
+        flagUrl: { type: [string, 'null'], format: uri, description: Bandera del país (https) }
     Team:
       type: object
       required: [id, name]
@@ -598,6 +600,15 @@ components:
           type: [string, 'null']
           format: date-time
           description: El frontend marca el dato como desactualizado si tiene más de 5 minutos.
+        round:
+          type: [string, 'null']
+          description: Jornada tal como la nombra el proveedor, p. ej. "Regular Season - 8".
+        venue:
+          type: [object, 'null']
+          required: [name]
+          properties:
+            name: { type: string }
+            city: { type: [string, 'null'] }
     EventDetail:
       allOf:
         - $ref: '#/components/schemas/Event'

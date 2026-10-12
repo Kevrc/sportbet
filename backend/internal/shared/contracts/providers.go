@@ -20,6 +20,11 @@ type ProviderLeague struct {
 	ExternalID string
 	Name       string
 	Country    string
+	// Season es la temporada en curso según el proveedor (0 si no la da).
+	Season int
+	// LogoURL y FlagURL son URLs https, o vacío si el proveedor no las da.
+	LogoURL string
+	FlagURL string
 }
 
 type ProviderFixture struct {
@@ -29,6 +34,10 @@ type ProviderFixture struct {
 	Away       ProviderTeam
 	StartAt    time.Time
 	Status     MatchStatus
+	// Round es la jornada tal como la nombra el proveedor ("Regular Season - 8").
+	Round     string
+	VenueName string
+	VenueCity string
 	// Marcador de tiempo reglamentario; nil mientras no haya empezado.
 	HomeScore *int
 	AwayScore *int
@@ -55,4 +64,19 @@ type FixtureProvider interface {
 type LiveScoreProvider interface {
 	Name() string
 	LiveScores(ctx context.Context) ([]LiveScore, error)
+}
+
+// TeamStanding es la fila de un equipo en la tabla de posiciones.
+type TeamStanding struct {
+	TeamExternalID string
+	Played         int
+	GoalsFor       int
+	GoalsAgainst   int
+}
+
+// StandingsProvider es opcional: solo lo implementan los proveedores que
+// entregan tablas de posiciones (API-Football). Se usa para calcular la
+// fuerza de los equipos que alimenta el modelo de cuotas.
+type StandingsProvider interface {
+	Standings(ctx context.Context, leagueExternalID string, season int) ([]TeamStanding, error)
 }
