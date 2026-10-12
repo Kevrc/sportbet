@@ -202,3 +202,44 @@ func TestHasFeaturedInPlay(t *testing.T) {
 		t.Fatal("solo cuenta los eventos del mismo proveedor")
 	}
 }
+
+func TestApplyLiveScoresStoresMatchEvents(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	repo := infrastructure.NewRepository(pool)
+	now := time.Now().UTC()
+	_, err := repo.ImportFixtures(ctx, "apifootball", now, []contracts.ProviderFixture{{
+		ExternalID: "500", StartAt: now.Add(-20 * time.Minute), Status: contracts.MatchScheduled,
+		League: contracts.ProviderLeague{ExternalID: "39", Name: "Premier"},
+		Home:   contracts.ProviderTeam{ExternalID: "40", Name: "Liverpool"},
+		Away:   contracts.ProviderTeam{ExternalID: "50", Name: "City"},
+	}}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	_ = pool.QueryRow(ctx, `SELECT id::text FROM events`).Scan(&id)
+	goal := contracts.MatchEvent{Minute: 12, Side: contracts.SideHome, Type: contracts.MatchEventGoal, Detail: "Normal Goal", Player: "Salah", Assist: "Szoboszlai"}
+	card := contracts.MatchEvent{Minute: 45, Extra: 1, Side: contracts.SideAway, Type: contracts.MatchEventCard, Detail: "Yellow Card", Player: "Rodri"}
+	apply := func(minute int, events ...contracts.MatchEvent) {
+		t.Helper()
+		_, err := repo.ApplyLiveScores(ctx, "apifootball", now, []contracts.LiveScore{{
+			ExternalID: "500", Status: contracts.MatchLive, HomeScore: 1, Minute: minute,
+			ObservedAt: now.Add(time.Duration(minute) * time.Second), Events: events,
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	apply(12, goal)
+	apply(46, goal, card)
+	apply(47) // sin sucesos: no borra lo guardado
+	event, err := repo.GetEvent(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(event.Timeline) != 2 || event.Timeline[0] != goal || event.Timeline[1] != card {
+		t.Fatalf("timeline = %+v", event.Timeline)
+	}
+}

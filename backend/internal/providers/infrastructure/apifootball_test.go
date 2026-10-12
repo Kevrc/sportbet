@@ -292,3 +292,41 @@ func TestStandingsFallsBackToLastSeasonAllowedByPlan(t *testing.T) {
 		t.Fatalf("consultas = %v; want %v", seasons, want)
 	}
 }
+
+func TestLiveScoresIncludeMatchEvents(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"errors":[],"response":[{
+			"fixture": {"id": 9, "date": "2026-10-11T23:30:00+00:00", "status": {"short": "2H", "elapsed": 88}},
+			"league": {"id": 128, "name": "Liga Profesional", "country": "Argentina"},
+			"teams": {"home": {"id": 456, "name": "Talleres"}, "away": {"id": 453, "name": "Independiente"}},
+			"goals": {"home": 1, "away": 0},
+			"score": {"fulltime": {"home": null, "away": null}},
+			"events": [
+				{"time": {"elapsed": 8, "extra": null}, "team": {"id": 453}, "player": {"name": "Nahuel Banegas"}, "assist": {"name": null}, "type": "Card", "detail": "Yellow Card"},
+				{"time": {"elapsed": 45, "extra": 2}, "team": {"id": 456}, "player": {"name": "Valoyes"}, "assist": {"name": "Girotti"}, "type": "Goal", "detail": "Normal Goal"},
+				{"time": {"elapsed": 70}, "team": {"id": 456}, "player": {"name": "Depietri"}, "assist": {"name": "Botta"}, "type": "subst", "detail": "Substitution 1"},
+				{"time": {"elapsed": 80}, "team": {"id": 999}, "player": {"name": "Otro"}, "type": "Goal", "detail": "Normal Goal"},
+				{"time": {"elapsed": 81}, "team": {"id": 456}, "player": {"name": "X"}, "type": "Desconocido", "detail": "?"}
+			]
+		}]}`))
+	}))
+	defer server.Close()
+	provider, _ := NewAPIFootball(server.URL, "test-key", server.Client())
+	scores, err := provider.LiveScores(context.Background())
+	if err != nil || len(scores) != 1 {
+		t.Fatalf("scores = %+v, err = %v", scores, err)
+	}
+	ev := scores[0].Events
+	if len(ev) != 3 {
+		t.Fatalf("debe descartar el equipo y el tipo desconocidos: %+v", ev)
+	}
+	if ev[0].Type != contracts.MatchEventCard || ev[0].Side != contracts.SideAway || ev[0].Assist != "" {
+		t.Fatalf("tarjeta = %+v", ev[0])
+	}
+	if ev[1].Type != contracts.MatchEventGoal || ev[1].Side != contracts.SideHome || ev[1].Extra != 2 || ev[1].Assist != "Girotti" {
+		t.Fatalf("gol = %+v", ev[1])
+	}
+	if ev[2].Type != contracts.MatchEventSubst {
+		t.Fatalf("cambio = %+v", ev[2])
+	}
+}

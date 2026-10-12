@@ -44,6 +44,16 @@ type leagueDTO struct {
 	FlagURL  *string `json:"flagUrl"`
 }
 
+type matchEventDTO struct {
+	Minute int     `json:"minute"`
+	Extra  *int    `json:"extra"`
+	Side   string  `json:"side"`
+	Type   string  `json:"type"`
+	Detail string  `json:"detail"`
+	Player *string `json:"player"`
+	Assist *string `json:"assist"`
+}
+
 type venueDTO struct {
 	Name string  `json:"name"`
 	City *string `json:"city"`
@@ -70,6 +80,8 @@ type eventDTO struct {
 	Round         *string     `json:"round"`
 	Venue         *venueDTO   `json:"venue"`
 	Markets       []marketDTO `json:"markets,omitempty"`
+	// Timeline solo va en el detalle y se omite si todavía no hay sucesos.
+	Timeline []matchEventDTO `json:"timeline,omitempty"`
 }
 
 type marketDTO struct {
@@ -263,6 +275,20 @@ func toEvent(event application.Event, detail bool) eventDTO {
 		out.Venue = &venueDTO{Name: *event.VenueName, City: event.VenueCity}
 	}
 	if detail {
+		out.Timeline = make([]matchEventDTO, 0, len(event.Timeline))
+		for _, e := range event.Timeline {
+			item := matchEventDTO{Minute: e.Minute, Side: e.Side, Type: e.Type, Detail: e.Detail}
+			if e.Extra > 0 {
+				item.Extra = &e.Extra
+			}
+			if e.Player != "" {
+				item.Player = &e.Player
+			}
+			if e.Assist != "" {
+				item.Assist = &e.Assist
+			}
+			out.Timeline = append(out.Timeline, item)
+		}
 		out.Markets = make([]marketDTO, 0, len(event.Markets))
 		for _, market := range event.Markets {
 			item := marketDTO{

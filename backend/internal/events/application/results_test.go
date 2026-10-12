@@ -110,3 +110,19 @@ func TestApplyLiveScoresSkipsInvalidScoresInsteadOfFailing(t *testing.T) {
 		t.Fatalf("marcadores guardados = %+v; want solo el válido", repo.live)
 	}
 }
+
+func TestApplyLiveScoresDropsInvalidMatchEvents(t *testing.T) {
+	repo := &repositoryStub{}
+	scores := []contracts.LiveScore{{ExternalID: "1", Status: contracts.MatchLive, Events: []contracts.MatchEvent{
+		{Minute: 10, Side: contracts.SideHome, Type: contracts.MatchEventGoal},
+		{Minute: 11, Side: "LOCAL", Type: contracts.MatchEventGoal},
+		{Minute: 12, Side: contracts.SideAway, Type: "PENALTY"},
+		{Minute: -1, Side: contracts.SideAway, Type: contracts.MatchEventCard},
+	}}}
+	if err := NewService(repo, nil).ApplyLiveScores(context.Background(), "apifootball", time.Now(), scores); err != nil {
+		t.Fatal(err)
+	}
+	if len(repo.live) != 1 || len(repo.live[0].Events) != 1 || repo.live[0].Events[0].Minute != 10 {
+		t.Fatalf("sucesos guardados = %+v", repo.live)
+	}
+}
