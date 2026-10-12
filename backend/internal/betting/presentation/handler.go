@@ -87,7 +87,7 @@ func (h *BettingHandler) PlaceBet(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteJSON(w, http.StatusOK, bet)
 			return
 		}
-		httpx.WriteError(w, r, err)
+		writeBetError(w, r, err)
 		return
 	}
 
