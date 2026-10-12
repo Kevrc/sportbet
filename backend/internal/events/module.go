@@ -11,7 +11,6 @@ package events
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,12 +20,15 @@ import (
 	"sportbet/internal/events/infrastructure"
 	"sportbet/internal/events/presentation"
 	"sportbet/internal/shared/app"
-	"sportbet/internal/shared/errs"
 )
 
 // Register registra las rutas, suscripciones al bus y workers del módulo.
 // Usa rutas completas (r.Get("/events/{id}", ...)), nunca r.Route ni r.Mount
 // sobre un prefijo que otro módulo también use: chi entra en pánico.
+// resultsEvery es la frecuencia máxima de confirmación de resultados con un
+// proveedor que cobra por llamada.
+const resultsEvery = 10 * time.Minute
+
 func Register(r chi.Router, d app.Deps) {
 	service := application.NewService(infrastructure.NewRepository(d.DB), d.Bus)
 	presentation.Register(r, service, d.Bus, d.Log, d.Auth)
@@ -65,29 +67,23 @@ func Register(r chi.Router, d app.Deps) {
 				d.Log.ErrorContext(ctx, "falló la actualización de marcadores en vivo", "err", err)
 			}
 		}
+		// Confirmar resultados cuesta llamadas: con API-Football se agrupa por
+		// fecha y se hace como mucho cada 10 minutos. El replay no gasta cuota.
+		var lastResults time.Time
 		syncResults := func() {
 			now := d.Clock().UTC()
+			replay := d.Fixtures.Name() == "replay"
 			cutoff := now
-			if d.Fixtures.Name() != "replay" {
+			if !replay {
+				if !lastResults.IsZero() && now.Sub(lastResults) < resultsEvery {
+					return
+				}
+				lastResults = now
 				cutoff = now.Add(-d.Config.LiveStaleAfter)
 			}
-			candidates, err := service.ListResultCandidates(ctx, d.Fixtures.Name(), cutoff)
+			calls, err := service.ConfirmResults(ctx, d.Fixtures.Name(), d.Fixtures, d.Config.FeaturedLeagueIDs, now, cutoff, !replay)
 			if err != nil {
-				d.Log.ErrorContext(ctx, "falló la búsqueda de resultados pendientes", "err", err)
-				return
-			}
-			for _, externalID := range candidates {
-				fixture, err := d.Fixtures.FixtureResult(ctx, externalID)
-				if err != nil {
-					d.Log.ErrorContext(ctx, "falló la consulta del resultado final", "external_id", externalID, "err", err)
-					if errors.Is(err, errs.ErrQuotaExceeded) {
-						return
-					}
-					continue
-				}
-				if err := service.RefreshResult(ctx, d.Fixtures.Name(), now, fixture); err != nil {
-					d.Log.ErrorContext(ctx, "falló la actualización del resultado final", "external_id", externalID, "err", err)
-				}
+				d.Log.ErrorContext(ctx, "falló la confirmación de resultados", "calls", calls, "err", err)
 			}
 		}
 		syncFixtures()

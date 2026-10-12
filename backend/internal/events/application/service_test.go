@@ -9,7 +9,10 @@ import (
 )
 
 type repositoryStub struct {
-	imported bool
+	imported   bool
+	candidates []ResultCandidate
+	refreshed  []string
+	live       []contracts.LiveScore
 }
 
 func (r *repositoryStub) ListLeagues(context.Context) ([]League, error) { return nil, nil }
@@ -22,14 +25,20 @@ func (r *repositoryStub) GetEvent(context.Context, string) (Event, error) {
 func (r *repositoryStub) SetFeatured(context.Context, string, bool) (Event, error) {
 	return Event{}, nil
 }
-func (r *repositoryStub) ImportFixtures(context.Context, string, time.Time, []contracts.ProviderFixture, bool) ([]Change, error) {
+func (r *repositoryStub) ImportFixtures(_ context.Context, _ string, _ time.Time, fixtures []contracts.ProviderFixture, refresh bool) ([]Change, error) {
 	r.imported = true
+	if refresh {
+		for _, f := range fixtures {
+			r.refreshed = append(r.refreshed, f.ExternalID)
+		}
+	}
 	return nil, nil
 }
-func (r *repositoryStub) ListResultCandidates(context.Context, string, time.Time) ([]string, error) {
-	return nil, nil
+func (r *repositoryStub) ListResultCandidates(context.Context, string, time.Time) ([]ResultCandidate, error) {
+	return r.candidates, nil
 }
-func (r *repositoryStub) ApplyLiveScores(context.Context, string, time.Time, []contracts.LiveScore) ([]Change, error) {
+func (r *repositoryStub) ApplyLiveScores(_ context.Context, _ string, _ time.Time, scores []contracts.LiveScore) ([]Change, error) {
+	r.live = scores
 	return nil, nil
 }
 
