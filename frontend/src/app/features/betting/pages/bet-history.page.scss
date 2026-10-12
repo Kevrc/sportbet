@@ -301,45 +301,60 @@ h1 {
 }
 
 .totals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   margin: 0;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--sportbet-borde);
-  background: var(--sportbet-superficie-elevada);
-  color: var(--sportbet-texto);
+  background: transparent;
 
   div {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--sportbet-superficie);
+    color: var(--sportbet-texto);
+  }
+
+  div:first-child {
+    border: 1px solid var(--sportbet-borde);
+  }
+
+  div:nth-child(2) {
+    background: var(--sportbet-azul-fondo);
+
+    dt {
+      color: var(--sportbet-azul-texto);
+    }
+  }
+
+  div:nth-child(3) {
+    background: var(--sportbet-exito-fondo);
+
+    dt,
+    dd {
+      color: var(--sportbet-exito-texto);
+    }
   }
 
   dt {
     background: transparent;
     color: var(--sportbet-texto-secundario);
-    font-size: 0.74rem;
+    font-size: 12px;
   }
 
   dd {
     margin: 0;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    font-size: 1rem;
+    background: transparent;
+  }
 
-    &.plus {
-      padding: 0.1rem 0.35rem;
-      border-radius: 5px;
-      background: transparent;
-      color: var(--sportbet-texto);
-    }
-
-    &.minus {
-      padding: 0.1rem 0.35rem;
-      border-radius: 5px;
-      background: transparent;
-      color: var(--sportbet-texto);
-    }
+  div:nth-child(3) dd {
+    font-size: 18px;
+    font-weight: 800;
   }
 }
 
@@ -446,7 +461,7 @@ button {
   }
 
   .totals {
-    gap: 0.45rem 0.8rem;
+    grid-template-columns: 1fr;
   }
 
   .pager {
