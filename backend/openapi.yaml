@@ -576,6 +576,10 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+        logoUrl:
+          type: [string, 'null']
+          format: uri
+          description: Escudo del equipo (https). null si el proveedor no lo entrega, por ejemplo en el replay.
     Event:
       type: object
       required: [id, league, home, away, startAt, status, featured]
