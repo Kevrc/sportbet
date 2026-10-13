@@ -33,8 +33,13 @@ func (r *Repository) List(ctx context.Context, limit, offset int) ([]domain.Audi
 		return nil, 0, fmt.Errorf("admin: contar auditoría: %w", err)
 	}
 	rows, err := r.pool.Query(ctx, `
-		SELECT a.id, a.actor_id::text, u.display_name, a.action, a.entity, a.entity_id, a.data, a.created_at
+		SELECT a.id, a.actor_id::text, u.display_name, a.action, a.entity, a.entity_id, a.data, a.created_at, p.data
 		FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id
+		LEFT JOIN LATERAL (
+			SELECT data FROM audit_log
+			WHERE a.action = 'BET_SETTLED' AND action = 'BET_PLACED' AND entity_id = a.entity_id
+			LIMIT 1
+		) p ON true
 		ORDER BY a.created_at DESC, a.id DESC
 		LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
@@ -42,7 +47,7 @@ func (r *Repository) List(ctx context.Context, limit, offset int) ([]domain.Audi
 	}
 	entries, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (domain.AuditEntry, error) {
 		var e domain.AuditEntry
-		err := row.Scan(&e.ID, &e.ActorID, &e.ActorName, &e.Action, &e.Entity, &e.EntityID, &e.Data, &e.CreatedAt)
+		err := row.Scan(&e.ID, &e.ActorID, &e.ActorName, &e.Action, &e.Entity, &e.EntityID, &e.Data, &e.CreatedAt, &e.Placed)
 		return e, err
 	})
 	return entries, total, err

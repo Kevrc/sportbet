@@ -21,6 +21,9 @@ type AuditEntry struct {
 	Entity    string
 	EntityID  *string
 	Data      json.RawMessage
+	// Placed es el BET_PLACED de la misma apuesta; en un BET_SETTLED dice
+	// qué se había apostado.
+	Placed    json.RawMessage
 	CreatedAt time.Time
 }
 

@@ -44,11 +44,28 @@
         @let line = describe(e);
         <li>
           <span class="icon" aria-hidden="true">{{ line.icon }}</span>
-          <span class="text">{{ line.text }}</span>
+          <span class="text">
+            {{ line.text }}
+            @if (line.code) {
+              <code class="code">{{ line.code }}</code>
+            }
+            @if (line.legs.length) {
+              <ul class="legs">
+                @for (leg of line.legs; track $index) {
+                  <li>{{ leg }}</li>
+                }
+              </ul>
+            }
+          </span>
           <time [attr.datetime]="e.createdAt">{{ e.createdAt | date: 'dd/MM HH:mm' }}</time>
         </li>
       }
     </ol>
+    @if (activity().length < activityTotal()) {
+      <button type="button" class="more" (click)="loadMore()" [disabled]="loadingMore()">
+        Ver más ({{ activityTotal() - activity().length }})
+      </button>
+    }
   } @else if (!loading()) {
     <p class="empty">Todavía no hay apuestas registradas.</p>
   }

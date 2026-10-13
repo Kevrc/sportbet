@@ -205,10 +205,12 @@ func (r *Repository) CloseMarketsPastCutoff(ctx context.Context, cutoff time.Tim
 func (r *Repository) GetSelections(ctx context.Context, ids []string) (map[string]contracts.SelectionInfo, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT s.id::text, s.code, s.market_id::text, m.code, m.event_id::text,
-		       s.label, s.odd_x100, m.status, e.status, e.start_at
+		       h.name || ' vs ' || a.name, s.label, s.odd_x100, m.status, e.status, e.start_at
 		FROM selections s
 		JOIN markets m ON m.id = s.market_id
 		JOIN events e ON e.id = m.event_id
+		JOIN teams h ON h.id = e.home_team_id
+		JOIN teams a ON a.id = e.away_team_id
 		WHERE s.id = ANY($1::uuid[])`, ids)
 	if err != nil {
 		return nil, fmt.Errorf("markets: consultar selecciones: %w", err)
@@ -221,7 +223,7 @@ func (r *Repository) GetSelections(ctx context.Context, ids []string) (map[strin
 		var oddX100 int32
 		if err := rows.Scan(
 			&item.SelectionID, &item.SelectionCode, &item.MarketID, &item.MarketCode,
-			&item.EventID, &item.Label, &oddX100, &marketStatus, &eventStatus, &item.EventStartAt,
+			&item.EventID, &item.EventName, &item.Label, &oddX100, &marketStatus, &eventStatus, &item.EventStartAt,
 		); err != nil {
 			return nil, fmt.Errorf("markets: leer selección: %w", err)
 		}

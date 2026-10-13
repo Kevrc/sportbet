@@ -85,6 +85,7 @@ func (uc *PlaceBetUseCase) Execute(ctx context.Context, cmd PlaceBetCommand) (Pl
 	var changed []domain.OddsChangedError
 	var betSelections []domain.BetSelection
 	var oddsToCombine []money.Odds
+	var legs []eventbus.BetLeg
 
 	for _, sInput := range cmd.Selections {
 		info, ok := marketsInfo[sInput.SelectionID]
@@ -107,6 +108,10 @@ func (uc *PlaceBetUseCase) Execute(ctx context.Context, cmd PlaceBetCommand) (Pl
 		}
 
 		oddsToCombine = append(oddsToCombine, info.Odd)
+		legs = append(legs, eventbus.BetLeg{
+			EventID: info.EventID, EventName: info.EventName, MarketCode: info.MarketCode,
+			Pick: info.Label, Odd: info.Odd,
+		})
 		betSelections = append(betSelections, domain.BetSelection{
 			SelectionID: sInput.SelectionID,
 			EventID:     info.EventID,
@@ -164,7 +169,7 @@ func (uc *PlaceBetUseCase) Execute(ctx context.Context, cmd PlaceBetCommand) (Pl
 	if uc.bus != nil {
 		uc.bus.Publish(ctx, eventbus.BetPlaced{
 			BetID: betID, UserID: cmd.UserID, Stake: cmd.Stake, TotalOdd: totalOdd,
-			Selections: len(cmd.Selections), PlacedAt: uc.clock(),
+			Selections: len(cmd.Selections), PlacedAt: uc.clock(), Legs: legs,
 		})
 	}
 

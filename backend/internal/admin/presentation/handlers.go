@@ -50,6 +50,7 @@ type auditDTO struct {
 	Entity    string          `json:"entity"`
 	EntityID  *string         `json:"entityId"`
 	Data      json.RawMessage `json:"data"`
+	Placed    json.RawMessage `json:"placed,omitempty"`
 	CreatedAt time.Time       `json:"createdAt"`
 }
 
@@ -80,7 +81,7 @@ func (h *Handlers) audit(w http.ResponseWriter, r *http.Request) {
 		}
 		items = append(items, auditDTO{
 			ID: e.ID, ActorID: e.ActorID, ActorName: e.ActorName, Action: e.Action,
-			Entity: e.Entity, EntityID: e.EntityID, Data: data, CreatedAt: e.CreatedAt,
+			Entity: e.Entity, EntityID: e.EntityID, Data: data, Placed: e.Placed, CreatedAt: e.CreatedAt,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, httpx.Paged[auditDTO]{Items: items, Page: p.Page, PageSize: p.PageSize, Total: total})
