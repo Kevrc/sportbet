@@ -27,6 +27,8 @@ export class AdminOverview {
   protected readonly activity = signal<AuditEntry[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly loading = signal(true);
+  protected readonly activityTotal = signal(0);
+  protected readonly loadingMore = signal(false);
 
   protected readonly money = formatCents;
   protected readonly describe = describeActivity;
@@ -50,12 +52,26 @@ export class AdminOverview {
       next: ({ stats, audit }) => {
         this.stats.set(stats);
         this.activity.set(audit.items);
+        this.activityTotal.set(audit.total);
         this.loading.set(false);
       },
       error: () => {
         this.error.set('No se pudieron cargar las estadísticas.');
         this.loading.set(false);
       },
+    });
+  }
+
+  loadMore(): void {
+    const page = Math.floor(this.activity().length / ACTIVITY_SIZE) + 1;
+    this.loadingMore.set(true);
+    this.service.audit(page, ACTIVITY_SIZE).subscribe({
+      next: (audit) => {
+        this.activity.update((items) => [...items, ...audit.items]);
+        this.activityTotal.set(audit.total);
+        this.loadingMore.set(false);
+      },
+      error: () => this.loadingMore.set(false),
     });
   }
 }

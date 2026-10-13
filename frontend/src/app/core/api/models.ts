@@ -79,6 +79,8 @@ export interface AuditEntry {
   entity: string;
   entityId: string | null;
   data?: Record<string, unknown>;
+  /** En un BET_SETTLED, los datos del BET_PLACED de la misma apuesta. */
+  placed?: Record<string, unknown>;
   createdAt: string;
 }
 

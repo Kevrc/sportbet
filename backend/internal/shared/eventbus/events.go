@@ -50,6 +50,17 @@ type BetPlaced struct {
 	TotalOdd   money.Odds  `json:"totalOddX100"`
 	Selections int         `json:"selections"`
 	PlacedAt   time.Time   `json:"placedAt"`
+	// Legs describe cada selección para que la auditoría sea legible sin
+	// consultar las tablas de betting.
+	Legs []BetLeg `json:"legs,omitempty"`
+}
+
+type BetLeg struct {
+	EventID    string     `json:"eventId"`
+	EventName  string     `json:"eventName"`
+	MarketCode string     `json:"marketCode"`
+	Pick       string     `json:"pick"`
+	Odd        money.Odds `json:"oddX100"`
 }
 
 type BetSettled struct {

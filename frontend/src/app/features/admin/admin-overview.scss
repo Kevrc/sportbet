@@ -125,6 +125,30 @@ h3 {
     min-width: 0;
     overflow-wrap: anywhere;
   }
+
+  .code {
+    margin-left: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--sportbet-texto-secundario);
+  }
+
+  .legs {
+    margin: 0.2rem 0 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: block;
+      padding: 0;
+      border: 0;
+      font-size: 0.8rem;
+      color: var(--sportbet-texto-secundario);
+    }
+  }
+}
+
+.more {
+  margin-top: 0.5rem;
 }
 
 .empty {

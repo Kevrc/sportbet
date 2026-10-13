@@ -18,6 +18,7 @@ type SelectionInfo struct {
 	MarketID      string
 	MarketCode    string // MATCH_RESULT, TOTAL_GOALS_2_5, BOTH_TEAMS_TO_SCORE
 	EventID       string
+	EventName     string // "Local vs Visitante"
 	Label         string
 	Odd           money.Odds
 	MarketStatus  MarketStatus
